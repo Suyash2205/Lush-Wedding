@@ -148,9 +148,12 @@ Then in the Vercel dashboard for the project:
 5. Update `NEXT_PUBLIC_APP_URL` to your production URL and redeploy.
 6. Update Meta's webhook Callback URL to point at your production domain.
 
-The cron in `vercel.json` triggers `/api/cron/stale-leads` every hour automatically
-on Hobby and Pro plans. To secure it, set `CRON_SECRET` in your Vercel env —
-Vercel automatically sends it as the Authorization header for cron requests.
+The cron in `vercel.json` triggers `/api/cron/stale-leads` once per day at
+03:30 UTC (~09:00 IST) on Hobby plans. Upgrade to Pro and change the schedule to
+`0 * * * *` for hourly digests. The in-dashboard "Pending" red badge updates on
+every page load regardless of the cron schedule. To secure the endpoint, set
+`CRON_SECRET` in your Vercel env — Vercel automatically sends it as the
+Authorization header for cron requests.
 
 ## Project structure
 
