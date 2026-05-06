@@ -8,6 +8,13 @@
       "when": 1778018877642,
       "tag": "0000_initial_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1778076234033,
+      "tag": "0001_add_event_date_guest_count",
+      "breakpoints": true
     }
   ]
 }

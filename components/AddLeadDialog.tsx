@@ -28,6 +28,10 @@ export function AddLeadDialog() {
     const form = new FormData(e.currentTarget);
     setSubmitting(true);
     try {
+      const guestCountRaw = form.get("guestCount");
+      const eventDateRaw = form.get("eventDate");
+      const igRaw = form.get("igUsername");
+
       const res = await fetch("/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -35,6 +39,15 @@ export function AddLeadDialog() {
           customerName: form.get("name"),
           customerPhone: form.get("phone"),
           summary: form.get("summary"),
+          igUsername: igRaw && String(igRaw).trim() ? String(igRaw) : null,
+          eventDate:
+            eventDateRaw && String(eventDateRaw).trim()
+              ? String(eventDateRaw)
+              : null,
+          guestCount:
+            guestCountRaw && String(guestCountRaw).trim()
+              ? Number(guestCountRaw)
+              : null,
         }),
       });
       if (!res.ok) {
@@ -70,20 +83,49 @@ export function AddLeadDialog() {
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="name">Customer name</Label>
-            <Input id="name" name="name" placeholder="Priya Sharma" required />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="name">Customer name</Label>
+              <Input id="name" name="name" placeholder="Priya Sharma" required />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="phone">Phone number</Label>
+              <Input
+                id="phone"
+                name="phone"
+                type="tel"
+                placeholder="+91 98765 43210"
+                required
+              />
+            </div>
           </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="eventDate">Wedding date (optional)</Label>
+              <Input id="eventDate" name="eventDate" type="date" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="guestCount">Guest count (optional)</Label>
+              <Input
+                id="guestCount"
+                name="guestCount"
+                type="number"
+                min={1}
+                placeholder="500"
+              />
+            </div>
+          </div>
+
           <div className="space-y-1.5">
-            <Label htmlFor="phone">Phone number</Label>
+            <Label htmlFor="igUsername">Instagram handle (optional)</Label>
             <Input
-              id="phone"
-              name="phone"
-              type="tel"
-              placeholder="+91 98765 43210"
-              required
+              id="igUsername"
+              name="igUsername"
+              placeholder="priyasharma"
             />
           </div>
+
           <div className="space-y-1.5">
             <Label htmlFor="summary">What are they looking for?</Label>
             <Textarea

@@ -11,6 +11,13 @@ const patchSchema = z.object({
   customerName: z.string().min(1).max(200).optional(),
   customerPhone: z.string().min(6).max(40).optional(),
   summary: z.string().max(2000).nullable().optional(),
+  igUsername: z.string().max(100).nullable().optional(),
+  eventDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD")
+    .nullable()
+    .optional(),
+  guestCount: z.number().int().min(1).max(100000).nullable().optional(),
   markContacted: z.boolean().optional(),
 });
 
@@ -45,6 +52,14 @@ export async function PATCH(
   if (parsed.data.customerPhone !== undefined)
     update.customerPhone = parsed.data.customerPhone;
   if (parsed.data.summary !== undefined) update.summary = parsed.data.summary;
+  if (parsed.data.igUsername !== undefined)
+    update.igUsername = parsed.data.igUsername
+      ? parsed.data.igUsername.replace(/^@/, "").trim()
+      : null;
+  if (parsed.data.eventDate !== undefined)
+    update.eventDate = parsed.data.eventDate;
+  if (parsed.data.guestCount !== undefined)
+    update.guestCount = parsed.data.guestCount;
   if (parsed.data.markContacted) {
     update.lastContactedAt = new Date();
     if (!parsed.data.status) update.status = "contacted";

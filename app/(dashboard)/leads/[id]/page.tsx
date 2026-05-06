@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ExternalLink, Phone } from "lucide-react";
+import { ArrowLeft, CalendarDays, ExternalLink, Phone, Users } from "lucide-react";
 import { format } from "date-fns";
 import { getLeadDetail, listEmployees } from "@/lib/leads";
 import { formatPhone } from "@/lib/utils";
@@ -74,6 +74,18 @@ export default async function LeadDetailPage({
                 <ExternalLink className="size-3" />
               </a>
             )}
+            {lead.eventDate && (
+              <span className="flex items-center gap-1.5 text-(--color-muted-foreground)">
+                <CalendarDays className="size-4" />
+                {format(new Date(lead.eventDate), "PPP")}
+              </span>
+            )}
+            {lead.guestCount != null && (
+              <span className="flex items-center gap-1.5 text-(--color-muted-foreground)">
+                <Users className="size-4" />
+                {lead.guestCount} guests
+              </span>
+            )}
           </div>
           <div className="text-xs text-(--color-muted-foreground)">
             Created {format(new Date(lead.createdAt), "PPp")}
@@ -93,6 +105,9 @@ export default async function LeadDetailPage({
             customerName: lead.customerName,
             customerPhone: lead.customerPhone,
             summary: lead.summary,
+            igUsername: lead.igUsername,
+            eventDate: lead.eventDate,
+            guestCount: lead.guestCount,
           }}
           employees={employees.map((e) => ({ id: e.id, name: e.name }))}
         />

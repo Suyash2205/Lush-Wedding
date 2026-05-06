@@ -5,6 +5,7 @@ import {
   uuid,
   integer,
   boolean,
+  date,
   pgEnum,
   uniqueIndex,
   index,
@@ -55,6 +56,8 @@ export const leads = pgTable(
     customerName: text("customer_name"),
     customerPhone: text("customer_phone"),
     summary: text("summary"),
+    eventDate: date("event_date"),
+    guestCount: integer("guest_count"),
     status: leadStatusEnum("status").notNull().default("new"),
     assignedTo: uuid("assigned_to").references(() => employees.id, {
       onDelete: "set null",

@@ -33,6 +33,9 @@ type Props = {
     customerName: string | null;
     customerPhone: string | null;
     summary: string | null;
+    igUsername: string | null;
+    eventDate: string | null;
+    guestCount: number | null;
   };
   employees: { id: string; name: string }[];
 };
@@ -40,6 +43,11 @@ type Props = {
 export function LeadActions({ lead, employees }: Props) {
   const [name, setName] = useState(lead.customerName ?? "");
   const [phone, setPhone] = useState(lead.customerPhone ?? "");
+  const [igUsername, setIgUsername] = useState(lead.igUsername ?? "");
+  const [eventDate, setEventDate] = useState(lead.eventDate ?? "");
+  const [guestCount, setGuestCount] = useState<string>(
+    lead.guestCount != null ? String(lead.guestCount) : "",
+  );
   const [status, setStatus] = useState<LeadStatus>(lead.status);
   const [assignedTo, setAssignedTo] = useState<string>(
     lead.assignedTo ?? "unassigned",
@@ -61,6 +69,26 @@ export function LeadActions({ lead, employees }: Props) {
     startTransition(() => router.refresh());
   }
 
+  function saveDetails() {
+    const payload: Record<string, unknown> = {
+      customerName: name || null,
+      customerPhone: phone || null,
+      igUsername: igUsername.trim() || null,
+      eventDate: eventDate || null,
+    };
+    if (guestCount.trim()) {
+      const n = Number(guestCount);
+      if (!Number.isFinite(n) || n < 1) {
+        toast.error("Guest count must be a positive number");
+        return;
+      }
+      payload.guestCount = n;
+    } else {
+      payload.guestCount = null;
+    }
+    patch(payload, "Details saved");
+  }
+
   return (
     <div className="w-full space-y-3 sm:w-72">
       <div className="space-y-1.5">
@@ -80,20 +108,43 @@ export function LeadActions({ lead, employees }: Props) {
           placeholder="+91 …"
         />
       </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="leadIg">Instagram handle</Label>
+        <Input
+          id="leadIg"
+          value={igUsername}
+          onChange={(e) => setIgUsername(e.target.value.replace(/^@/, ""))}
+          placeholder="priyasharma"
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-1.5">
+          <Label htmlFor="leadEventDate">Wedding date</Label>
+          <Input
+            id="leadEventDate"
+            type="date"
+            value={eventDate}
+            onChange={(e) => setEventDate(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="leadGuests">Guests</Label>
+          <Input
+            id="leadGuests"
+            type="number"
+            min={1}
+            value={guestCount}
+            onChange={(e) => setGuestCount(e.target.value)}
+            placeholder="500"
+          />
+        </div>
+      </div>
       <Button
         size="sm"
         variant="outline"
         className="w-full"
         disabled={pending}
-        onClick={() =>
-          patch(
-            {
-              customerName: name || null,
-              customerPhone: phone || null,
-            },
-            "Contact details saved",
-          )
-        }
+        onClick={saveDetails}
       >
         <Save className="size-4" />
         Save details

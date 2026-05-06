@@ -2,14 +2,16 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import {
   Bell,
+  CalendarDays,
   ChevronRight,
   Instagram,
   MessageSquare,
   NotebookText,
   Phone,
+  Users,
   UserRound,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -63,14 +65,15 @@ export function LeadsTable({
         <thead className="bg-(--color-muted) text-xs uppercase text-(--color-muted-foreground)">
           <tr>
             <th className="px-4 py-2 text-left">Lead</th>
-            <th className="hidden px-4 py-2 text-left md:table-cell">
+            <th className="hidden px-4 py-2 text-left xl:table-cell">
               Initial requirement
             </th>
+            <th className="hidden px-4 py-2 text-left md:table-cell">Event</th>
             <th className="px-4 py-2 text-left">Status</th>
             <th className="hidden px-4 py-2 text-left lg:table-cell">
               Assigned
             </th>
-            <th className="hidden px-4 py-2 text-left lg:table-cell">
+            <th className="hidden px-4 py-2 text-left xl:table-cell">
               Activity
             </th>
             <th className="px-4 py-2 text-left">Last update</th>
@@ -158,14 +161,18 @@ function LeadRow({
               )}
             </div>
             <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-(--color-muted-foreground)">
-              {row.lead.customerPhone ? (
+              {row.lead.customerPhone && (
                 <span className="flex items-center gap-1">
                   <Phone className="size-3" />
                   {formatPhone(row.lead.customerPhone)}
                 </span>
-              ) : row.lead.igUsername ? (
-                <span>@{row.lead.igUsername}</span>
-              ) : (
+              )}
+              {row.lead.igUsername && (
+                <span className="flex items-center gap-1">
+                  <Instagram className="size-3" />@{row.lead.igUsername}
+                </span>
+              )}
+              {!row.lead.customerPhone && !row.lead.igUsername && (
                 <span className="italic">No contact yet</span>
               )}
             </div>
@@ -174,7 +181,7 @@ function LeadRow({
       </td>
 
       <td
-        className="hidden max-w-[360px] px-4 py-3 align-top text-sm text-(--color-muted-foreground) md:table-cell"
+        className="hidden max-w-[360px] px-4 py-3 align-top text-sm text-(--color-muted-foreground) xl:table-cell"
         onClick={open}
       >
         {summary ? (
@@ -184,6 +191,34 @@ function LeadRow({
         ) : (
           <span className="text-xs italic">No summary captured yet</span>
         )}
+      </td>
+
+      <td
+        className="hidden px-4 py-3 align-top text-sm md:table-cell"
+        onClick={open}
+      >
+        <div className="flex flex-col gap-0.5">
+          {row.lead.eventDate ? (
+            <span className="flex items-center gap-1.5">
+              <CalendarDays className="size-3 text-(--color-muted-foreground)" />
+              {format(new Date(row.lead.eventDate), "d MMM yyyy")}
+            </span>
+          ) : (
+            <span className="text-xs italic text-(--color-muted-foreground)">
+              No date yet
+            </span>
+          )}
+          {row.lead.guestCount != null ? (
+            <span className="flex items-center gap-1.5 text-xs text-(--color-muted-foreground)">
+              <Users className="size-3" />
+              {row.lead.guestCount} guests
+            </span>
+          ) : (
+            <span className="text-xs italic text-(--color-muted-foreground)">
+              Capacity TBD
+            </span>
+          )}
+        </div>
       </td>
 
       <td
@@ -253,7 +288,7 @@ function LeadRow({
       </td>
 
       <td
-        className="hidden px-4 py-3 align-top text-xs text-(--color-muted-foreground) lg:table-cell"
+        className="hidden px-4 py-3 align-top text-xs text-(--color-muted-foreground) xl:table-cell"
         onClick={open}
       >
         <div className="flex flex-col gap-1">
