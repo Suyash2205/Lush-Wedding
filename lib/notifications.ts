@@ -30,7 +30,7 @@ export async function sendStaleDigest(opts: {
     process.env.RESEND_FROM_EMAIL ||
     "Lush Wedding Hall <onboarding@resend.dev>";
 
-  const subject = `${opts.leads.length} pending lead${opts.leads.length === 1 ? "" : "s"} need follow-up`;
+  const subject = `${opts.leads.length} pending lead${opts.leads.length === 1 ? " needs" : "s need"} follow-up`;
 
   const rowsHtml = opts.leads
     .map(
@@ -55,11 +55,22 @@ export async function sendStaleDigest(opts: {
     <p style="margin-top:16px"><a href="${opts.appUrl}/leads?status=new" style="display:inline-block;background:#dc2626;color:white;padding:8px 16px;border-radius:6px;text-decoration:none">Open dashboard</a></p>
   </div>`;
 
+  const text =
+    `${opts.leads.length} pending lead${opts.leads.length === 1 ? "" : "s"} on Lush Wedding Hall dashboard.\n\n` +
+    opts.leads
+      .map(
+        (l) =>
+          `- ${l.customerName ?? l.igUsername ?? "Unknown lead"}: ${l.summary ? truncate(l.summary, 90) : ""}\n  ${opts.appUrl}/leads/${l.id}`,
+      )
+      .join("\n") +
+    `\n\nOpen dashboard: ${opts.appUrl}/leads?status=new`;
+
   return r.emails.send({
     from,
     to: opts.to,
     subject,
     html,
+    text,
   });
 }
 
