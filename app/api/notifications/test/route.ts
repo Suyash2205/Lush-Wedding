@@ -50,9 +50,26 @@ export async function POST(req: Request) {
     },
   ];
 
-  const result = await sendStaleDigest({ to, leads: sample, appUrl }).catch(
+  const result = (await sendStaleDigest({ to, leads: sample, appUrl }).catch(
     (err: unknown) => ({ error: err instanceof Error ? err.message : String(err) }),
-  );
+  )) as
+    | { skipped?: boolean }
+    | { error: unknown }
+    | { data?: unknown; error?: unknown };
+
+  // Resend SDK returns { data, error } — surface the error to the client.
+  const resendError = (result as { error?: unknown }).error;
+  if (resendError) {
+    const message =
+      typeof resendError === "object" && resendError !== null
+        ? // @ts-expect-error best-effort message extraction
+          (resendError.message ?? JSON.stringify(resendError))
+        : String(resendError);
+    return NextResponse.json(
+      { error: `Resend rejected: ${message}` },
+      { status: 502 },
+    );
+  }
 
   return NextResponse.json({ ok: true, to, result });
 }
