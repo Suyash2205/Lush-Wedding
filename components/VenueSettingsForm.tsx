@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Copy } from "lucide-react";
+import { Copy, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,6 +36,21 @@ export function VenueSettingsForm({
   const [hours, setHours] = useState(staleHours);
   const [email, setEmail] = useState(notificationEmail);
   const [saving, setSaving] = useState(false);
+  const [sendingTest, setSendingTest] = useState(false);
+
+  async function sendTest() {
+    setSendingTest(true);
+    try {
+      const res = await fetch("/api/notifications/test", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed");
+      toast.success(`Test email sent to ${data.to}. Check your inbox.`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to send");
+    } finally {
+      setSendingTest(false);
+    }
+  }
 
   async function save() {
     setSaving(true);
@@ -144,8 +159,23 @@ export function VenueSettingsForm({
               onChange={(e) => setEmail(e.target.value)}
             />
             <p className="text-xs text-(--color-muted-foreground)">
-              Hourly digest emails go here. Leave blank to disable.
+              Daily digest emails go here. Leave blank to disable.
             </p>
+          </div>
+          <div className="flex flex-col gap-2 border-t border-(--color-border) pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-(--color-muted-foreground)">
+              Save first, then test that emails reach your inbox.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={sendingTest || !email}
+              onClick={sendTest}
+            >
+              <Send className="size-4" />
+              {sendingTest ? "Sending..." : "Send test email"}
+            </Button>
           </div>
         </CardContent>
       </Card>
