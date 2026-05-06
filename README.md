@@ -155,6 +155,25 @@ every page load regardless of the cron schedule. To secure the endpoint, set
 `CRON_SECRET` in your Vercel env — Vercel automatically sends it as the
 Authorization header for cron requests.
 
+## Adding a second admin (or any teammate)
+
+There is no separate "users" table — authentication is handled entirely by
+Clerk, so anyone with their own email + password (or Google account) gets in.
+The flow is:
+
+1. Sign in to your dashboard as the existing owner.
+2. Go to **Settings → Team**.
+3. Copy the **invite link** at the top of that page (it points at `/sign-up`).
+4. Send it to the second person. They sign up at that link with their own
+   email + password.
+5. Their first sign-in auto-creates a row in the `employees` table with the
+   role `agent` (read leads, add notes, set reminders, change status).
+6. Back on **Settings → Team**, click **Promote to owner** next to their name.
+   They now have full access (Settings, Team, Integration, Venue).
+
+There is no upper limit — you can have as many owners and agents as you need.
+Clerk's free tier covers 10,000 monthly active users.
+
 ## Project structure
 
 ```

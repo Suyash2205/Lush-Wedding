@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getOrCreateEmployee } from "@/lib/auth";
 import { listEmployees } from "@/lib/leads";
 import { TeamTable } from "@/components/TeamTable";
+import { InviteTeammatePanel } from "@/components/InviteTeammatePanel";
 
 export default async function TeamSettingsPage() {
   const me = await getOrCreateEmployee();
@@ -13,11 +14,12 @@ export default async function TeamSettingsPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Team</h1>
         <p className="text-sm text-(--color-muted-foreground)">
-          Anyone who signs in via Clerk gets an account here. The first person
-          to sign in becomes the owner; everyone else starts as an agent. Promote
-          or demote below.
+          Owners can do everything. Agents can read leads, add notes, set
+          reminders, and update status — but cannot change settings, venue
+          info, integrations, or team roles.
         </p>
       </div>
+      <InviteTeammatePanel />
       <TeamTable initial={employees} currentEmployeeId={me.id} />
     </div>
   );

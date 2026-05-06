@@ -12,6 +12,8 @@ import {
   type LeadStatus,
 } from "@/db/schema";
 
+void gte;
+
 export { STATUS_LABELS } from "./lead-constants";
 
 export async function getStaleThresholdHours(): Promise<number> {
@@ -63,6 +65,16 @@ export async function listLeads(filter: LeadFilter = {}) {
     .select({
       lead: leads,
       assignee: employees,
+      messageCount: sql<number>`(
+        SELECT count(*)::int FROM ${messages} WHERE ${messages.leadId} = ${leads.id}
+      )`,
+      commentCount: sql<number>`(
+        SELECT count(*)::int FROM ${comments} WHERE ${comments.leadId} = ${leads.id}
+      )`,
+      openReminderCount: sql<number>`(
+        SELECT count(*)::int FROM ${reminders}
+        WHERE ${reminders.leadId} = ${leads.id} AND ${reminders.completed} = false
+      )`,
     })
     .from(leads)
     .leftJoin(employees, eq(leads.assignedTo, employees.id))
@@ -70,6 +82,55 @@ export async function listLeads(filter: LeadFilter = {}) {
     .orderBy(desc(leads.lastInboundAt), desc(leads.createdAt));
 
   return rows;
+}
+
+export type LeadStats = {
+  total: number;
+  newCount: number;
+  awaitingCount: number;
+  contactedCount: number;
+  wonCount: number;
+  lostCount: number;
+  unassignedCount: number;
+  todayCount: number;
+  staleCount: number;
+};
+
+export async function getLeadStats(): Promise<LeadStats> {
+  const thresholdHours = await getStaleThresholdHours();
+  const cutoff = new Date(Date.now() - thresholdHours * 3600_000);
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const rows = await db
+    .select({
+      total: sql<number>`count(*)::int`,
+      newCount: sql<number>`count(*) FILTER (WHERE ${leads.status} = 'new')::int`,
+      awaitingCount: sql<number>`count(*) FILTER (WHERE ${leads.status} = 'awaiting_callback')::int`,
+      contactedCount: sql<number>`count(*) FILTER (WHERE ${leads.status} = 'contacted')::int`,
+      wonCount: sql<number>`count(*) FILTER (WHERE ${leads.status} = 'won')::int`,
+      lostCount: sql<number>`count(*) FILTER (WHERE ${leads.status} = 'lost')::int`,
+      unassignedCount: sql<number>`count(*) FILTER (WHERE ${leads.assignedTo} IS NULL)::int`,
+      todayCount: sql<number>`count(*) FILTER (WHERE ${leads.createdAt} >= ${startOfToday.toISOString()})::int`,
+      staleCount: sql<number>`count(*) FILTER (WHERE ${leads.status} = 'new' AND (
+        (${leads.lastInboundAt} IS NULL AND ${leads.createdAt} < ${cutoff.toISOString()})
+        OR ${leads.lastInboundAt} < ${cutoff.toISOString()}
+      ))::int`,
+    })
+    .from(leads);
+
+  const r = rows[0];
+  return {
+    total: Number(r?.total ?? 0),
+    newCount: Number(r?.newCount ?? 0),
+    awaitingCount: Number(r?.awaitingCount ?? 0),
+    contactedCount: Number(r?.contactedCount ?? 0),
+    wonCount: Number(r?.wonCount ?? 0),
+    lostCount: Number(r?.lostCount ?? 0),
+    unassignedCount: Number(r?.unassignedCount ?? 0),
+    todayCount: Number(r?.todayCount ?? 0),
+    staleCount: Number(r?.staleCount ?? 0),
+  };
 }
 
 export async function isLeadStale(
@@ -175,5 +236,3 @@ export async function countNotifications() {
     reminders: Number(dueReminders[0]?.count ?? 0),
   };
 }
-
-void gte;
