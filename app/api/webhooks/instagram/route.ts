@@ -53,7 +53,11 @@ export async function POST(req: Request) {
   // catch errors per-event so one bad event doesn't break the rest.
   for (const ev of events) {
     try {
-      await ingestEvent(ev);
+      if (ev.direction === "out") {
+        await ingestOutboundInstagramMessage(ev);
+      } else {
+        await ingestInboundInstagramMessage(ev);
+      }
     } catch (err) {
       console.error("[ig-webhook] failed to ingest event", err);
     }
@@ -62,22 +66,25 @@ export async function POST(req: Request) {
   return NextResponse.json({ ok: true });
 }
 
-async function ingestEvent(
-  ev: import("@/lib/meta/instagram").ParsedIgEvent,
-) {
-  // Dedup by ig_message_id
+async function dedupeIgMessage(messageId: string): Promise<boolean> {
   const existing = await db
     .select({ id: messages.id })
     .from(messages)
-    .where(eq(messages.igMessageId, ev.messageId))
+    .where(eq(messages.igMessageId, messageId))
     .limit(1);
-  if (existing[0]) return;
+  return Boolean(existing[0]);
+}
 
-  // Find or create lead by IGSID
+/** Incoming DM from the customer. */
+async function ingestInboundInstagramMessage(
+  ev: import("@/lib/meta/instagram").ParsedIgEvent,
+) {
+  if (await dedupeIgMessage(ev.messageId)) return;
+
   const found = await db
     .select()
     .from(leads)
-    .where(eq(leads.igUserId, ev.senderId))
+    .where(eq(leads.igUserId, ev.leadIgUserId))
     .limit(1);
 
   const webhookUsername = ev.senderUsername?.trim();
@@ -85,9 +92,8 @@ async function ingestEvent(
     webhookUsername || found[0]?.igUsername?.trim() || undefined;
   let resolvedNameFromGraph: string | undefined;
 
-  // Webhooks usually omit sender.username — resolve via Graph API when possible.
   if (!resolvedUsername) {
-    const p = await fetchInstagramMessagingSenderProfile(ev.senderId);
+    const p = await fetchInstagramMessagingSenderProfile(ev.leadIgUserId);
     if (p?.username?.trim()) resolvedUsername = p.username.trim();
     if (p?.name?.trim()) resolvedNameFromGraph = p.name.trim();
   }
@@ -105,7 +111,6 @@ async function ingestEvent(
       lastInboundAt: ev.timestamp,
       updatedAt: new Date(),
       summary,
-      // If we previously closed it, reopen on a new inbound message.
       status:
         found[0].status === "won" || found[0].status === "lost"
           ? "new"
@@ -133,7 +138,7 @@ async function ingestEvent(
       .insert(leads)
       .values({
         source: "instagram",
-        igUserId: ev.senderId,
+        igUserId: ev.leadIgUserId,
         igUsername: resolvedUsername ?? null,
         customerName: resolvedNameFromGraph ?? null,
         customerPhone: phoneFromMsg,
@@ -148,6 +153,68 @@ async function ingestEvent(
   await db.insert(messages).values({
     leadId,
     direction: "in",
+    source: "instagram",
+    content: ev.text,
+    igMessageId: ev.messageId,
+    createdAt: ev.timestamp,
+  });
+}
+
+/** Outgoing DM from your IG business (Meta sends as message echo). */
+async function ingestOutboundInstagramMessage(
+  ev: import("@/lib/meta/instagram").ParsedIgEvent,
+) {
+  if (await dedupeIgMessage(ev.messageId)) return;
+
+  const found = await db
+    .select()
+    .from(leads)
+    .where(eq(leads.igUserId, ev.leadIgUserId))
+    .limit(1);
+
+  let resolvedUsername = found[0]?.igUsername?.trim() || undefined;
+  let resolvedNameFromGraph: string | undefined;
+  if (!found[0] || !resolvedUsername) {
+    const p = await fetchInstagramMessagingSenderProfile(ev.leadIgUserId);
+    if (p?.username?.trim()) resolvedUsername = p.username.trim();
+    if (p?.name?.trim()) resolvedNameFromGraph = p.name.trim();
+  }
+
+  let leadId: string;
+  if (found[0]) {
+    leadId = found[0].id;
+    const update: Partial<typeof leads.$inferInsert> = { updatedAt: new Date() };
+    if (!(found[0].summary && found[0].summary.trim())) {
+      update.summary = truncate(ev.text, 240);
+    }
+    if (resolvedUsername && !found[0].igUsername) {
+      update.igUsername = resolvedUsername;
+    }
+    if (
+      resolvedNameFromGraph &&
+      !(found[0].customerName && found[0].customerName.trim())
+    ) {
+      update.customerName = resolvedNameFromGraph;
+    }
+    await db.update(leads).set(update).where(eq(leads.id, leadId));
+  } else {
+    const inserted = await db
+      .insert(leads)
+      .values({
+        source: "instagram",
+        igUserId: ev.leadIgUserId,
+        igUsername: resolvedUsername ?? null,
+        customerName: resolvedNameFromGraph ?? null,
+        summary: truncate(ev.text, 240),
+        status: "new",
+      })
+      .returning({ id: leads.id });
+    leadId = inserted[0].id;
+  }
+
+  await db.insert(messages).values({
+    leadId,
+    direction: "out",
     source: "instagram",
     content: ev.text,
     igMessageId: ev.messageId,

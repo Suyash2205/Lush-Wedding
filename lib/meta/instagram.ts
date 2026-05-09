@@ -23,6 +23,7 @@ export type IgMessaging = {
   message?: {
     mid: string;
     text?: string;
+    /** True when your Instagram business/page sent this message (webhook replay). */
     is_echo?: boolean;
     is_deleted?: boolean;
     attachments?: { type: string; payload?: { url?: string } }[];
@@ -34,13 +35,28 @@ export type IgMessaging = {
 
 export type ParsedIgEvent = {
   pageId: string;
-  senderId: string; // IGSID
+  /** Instagram-scoped user id for the customer (lead) in this thread */
+  leadIgUserId: string;
   senderUsername?: string;
   messageId: string;
   text: string;
   timestamp: Date;
-  isEcho: boolean;
+  direction: "in" | "out";
 };
+
+/** Text body for ingest, or null if there is nothing to store. */
+export function instagramMessageText(
+  message: NonNullable<IgMessaging["message"]>,
+): string | null {
+  if (message.is_deleted) return null;
+  const text =
+    message.text ??
+    message.attachments
+      ?.map((a) => `[${a.type}${a.payload?.url ? `: ${a.payload.url}` : ""}]`)
+      .join(" ") ??
+    "";
+  return text.length > 0 ? text : null;
+}
 
 export function parseIgWebhook(body: IgWebhookPayload): ParsedIgEvent[] {
   if (body.object !== "instagram") return [];
@@ -49,24 +65,33 @@ export function parseIgWebhook(body: IgWebhookPayload): ParsedIgEvent[] {
   for (const entry of body.entry ?? []) {
     for (const m of entry.messaging ?? []) {
       const msg = m.message;
-      if (!msg || msg.is_deleted) continue;
-      // Skip echoes by default — those are messages our own page sent.
-      if (msg.is_echo) continue;
-      const text =
-        msg.text ??
-        msg.attachments
-          ?.map((a) => `[${a.type}${a.payload?.url ? `: ${a.payload.url}` : ""}]`)
-          .join(" ") ??
-        "";
+      if (!msg) continue;
+      const text = instagramMessageText(msg);
       if (!text) continue;
+
+      const ts = new Date(m.timestamp ?? entry.time ?? Date.now());
+
+      if (msg.is_echo) {
+        // Echo: IG business → customer; `recipient.id` is the thread (lead) IGSID.
+        events.push({
+          pageId: entry.id,
+          leadIgUserId: m.recipient.id,
+          messageId: msg.mid,
+          text,
+          timestamp: ts,
+          direction: "out",
+        });
+        continue;
+      }
+
       events.push({
         pageId: entry.id,
-        senderId: m.sender.id,
+        leadIgUserId: m.sender.id,
         senderUsername: m.sender.username,
         messageId: msg.mid,
         text,
-        timestamp: new Date(m.timestamp ?? entry.time ?? Date.now()),
-        isEcho: false,
+        timestamp: ts,
+        direction: "in",
       });
     }
   }

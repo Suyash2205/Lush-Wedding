@@ -5,8 +5,10 @@ export function ChatTranscript({ messages }: { messages: Message[] }) {
   if (messages.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-(--color-border) p-8 text-center text-sm text-(--color-muted-foreground)">
-        No messages yet. If this is an Instagram lead, the customer&apos;s DMs will
-        appear here.
+        No messages yet. For Instagram, subscribe webhooks to{" "}
+        <span className="font-mono">messages</span> and{" "}
+        <span className="font-mono">message_echoes</span> so customer DMs and
+        replies you send from Lush Wedding both appear here.
       </div>
     );
   }

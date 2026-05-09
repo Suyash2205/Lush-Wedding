@@ -196,9 +196,10 @@ export default async function IntegrationSettingsPage() {
             </Step>
             <Step n={5}>
               Open <b>Webhooks</b> in the app. Pick the <b>Instagram</b> object.
-              Paste the Callback URL and Verify Token shown above. Subscribe to
-              the <code>messages</code> field. Meta will hit our verify endpoint
-              and you should see a green check.
+              Paste the Callback URL and Verify Token shown above. Subscribe to{" "}
+              <code>messages</code> and <code>message_echoes</code> so inbound DMs{" "}
+              and replies you send from Instagram both show in Conversations.
+              Meta will hit our verify endpoint and you should see a green check.
             </Step>
             <Step n={6}>
               Add yourself (and any agents) as <b>Developers</b> or <b>Testers</b>{" "}

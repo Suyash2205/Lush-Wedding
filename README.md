@@ -10,7 +10,7 @@ Anything else customers type lands here, and your team calls them back.
 
 ## Features
 
-- Auto-capture Instagram DMs via Meta webhook (`messages` field, signature-verified)
+- Auto-capture Instagram DMs via Meta webhook (`messages` + `message_echoes` for your replies)
 - Manual lead entry for phone callers and walk-ins
 - Lead pipeline with statuses: `new` -> `awaiting_callback` -> `contacted` -> `won`/`lost`
 - Internal comments / call notes per lead
@@ -120,7 +120,8 @@ sufficient for a single business operating on its own IG account.
 6. In your dashboard at `/settings/integration`, copy the **Callback URL** and
    **Verify Token**. In Meta's app dashboard, go to **Webhooks**, pick the
    **Instagram** object, paste both values, and subscribe to the
-   `messages` field. Meta will GET your URL — it should respond with the
+   `messages` and `message_echoes` fields so we store **both sides** of the thread.
+   Meta will GET your URL — it should respond with the
    challenge and the subscription will turn green.
 
 7. Add yourself (and any agents) as **Developers** or **Testers** under
