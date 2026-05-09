@@ -16,7 +16,6 @@ import {
   ChevronRight,
   Instagram,
   MessageSquare,
-  NotebookText,
   Phone,
   Users,
   UserRound,
@@ -48,7 +47,6 @@ const STATUSES: LeadStatus[] = [
 
 const EVENT_NONE = "__none__";
 
-/** First-of-month values for ~5 years of month picks (wedding month). */
 const EVENT_MONTH_OPTIONS = (() => {
   const anchor = startOfMonth(subMonths(new Date(), 12));
   const out: { value: string; label: string }[] = [];
@@ -78,6 +76,17 @@ function monthSelectValue(
   }
 }
 
+/** One-line preview: strip bracket tags, collapse space, trim length */
+function clipSnippet(s: string | null | undefined, max = 86): string {
+  if (!s) return "";
+  const t = s
+    .replace(/\[[^\]]+\]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (t.length <= max) return t;
+  return `${t.slice(0, max - 1)}…`;
+}
+
 const STATUS_DOT: Record<LeadStatus, string> = {
   new: "bg-(--color-primary)",
   awaiting_callback: "bg-(--color-warning)",
@@ -92,8 +101,7 @@ export type LeadRowData = {
   messageCount: number;
   commentCount: number;
   openReminderCount: number;
-  /** DM transcript (guest + Lush Wedding), built on the server */
-  conversationSummary: string;
+  lastGuestPreview: string | null;
   stale: boolean;
 };
 
@@ -106,33 +114,29 @@ export function LeadsTable({
 }) {
   return (
     <div className="overflow-x-auto rounded-xl border border-(--color-border) bg-(--color-card)">
-      <table className="min-w-[1120px] w-full">
-        <thead className="bg-(--color-muted) text-xs uppercase text-(--color-muted-foreground)">
+      <table className="w-full min-w-[820px] table-fixed text-sm">
+        <thead className="bg-(--color-muted) text-[10px] font-semibold uppercase tracking-wide text-(--color-muted-foreground)">
           <tr>
-            <th
-              className="w-10 px-2 py-2 text-left tabular-nums"
-              title="Row number in this list"
-            >
-              #
+            <th className="w-8 px-1 py-1.5 text-left">#</th>
+            <th className="w-[22%] min-w-[9rem] px-2 py-1.5 text-left">
+              Lead
             </th>
-            <th className="px-4 py-2 text-left">Lead</th>
-            <th className="hidden px-4 py-2 text-left xl:table-cell">
-              Conversation
+            <th className="hidden w-[19%] min-w-[10.5rem] px-2 py-1.5 text-left md:table-cell">
+              Summary
             </th>
-            <th className="hidden px-3 py-2 text-left md:table-cell">
-              Event date
+            <th className="w-[15%] min-w-[7.5rem] px-2 py-1.5 text-left">
+              Status
             </th>
-            <th className="px-4 py-2 text-left">Status</th>
-            <th className="hidden px-4 py-2 text-left lg:table-cell">
+            <th className="hidden w-[14%] min-w-[7rem] px-2 py-1.5 text-left md:table-cell">
               Assigned
             </th>
-            <th className="hidden px-4 py-2 text-left xl:table-cell">
+            <th className="hidden w-[12%] min-w-[5.5rem] px-1 py-1.5 text-left lg:table-cell">
               Activity
             </th>
-            <th className="min-w-[9.5rem] whitespace-nowrap px-4 py-2 text-left">
-              Last update
+            <th className="w-[12%] min-w-[5.5rem] px-2 py-1.5 text-left">
+              Last
             </th>
-            <th className="w-10 shrink-0 px-2 py-2"></th>
+            <th className="w-8 px-1 py-1.5"></th>
           </tr>
         </thead>
         <tbody>
@@ -199,9 +203,24 @@ function LeadRow({
     router.push(`/leads/${row.lead.id}`);
   }
 
-  const transcript = row.conversationSummary?.trim();
   const title = primaryLeadTitle(row.lead);
   const showHandleLine = shouldShowInstagramHandleInSubtitle(row.lead, title);
+
+  const snippetSource =
+    row.lastGuestPreview?.trim() || row.lead.summary?.trim() || "";
+  const snippet = clipSnippet(snippetSource);
+
+  const weddingLine = row.lead.eventDate
+    ? format(
+        typeof row.lead.eventDate === "string"
+          ? parseISO(row.lead.eventDate.slice(0, 10))
+          : new Date(row.lead.eventDate),
+        "d MMM yyyy",
+      )
+    : "—";
+
+  const guestLine =
+    row.lead.guestCount != null ? `${row.lead.guestCount} guests` : "—";
 
   return (
     <tr
@@ -209,42 +228,42 @@ function LeadRow({
       data-pending={pending || busy ? "1" : undefined}
     >
       <td
-        className="px-2 py-3 align-top text-xs tabular-nums text-(--color-muted-foreground)"
+        className="px-1 py-2 align-top text-[10px] tabular-nums text-(--color-muted-foreground)"
         onClick={open}
       >
         {serial}
       </td>
-      <td className="px-4 py-3 align-top">
+      <td className="px-2 py-2 align-top">
         <button
           type="button"
           onClick={open}
-          className="flex w-full items-start gap-3 text-left"
+          className="flex w-full min-w-0 items-start gap-2 text-left"
         >
           <SourceIcon source={row.lead.source} />
           <div className="min-w-0">
-            <div className="flex items-center gap-2 font-medium">
+            <div className="flex min-w-0 items-center gap-1.5 text-sm font-medium leading-tight">
               <span className="truncate">{title}</span>
               {row.stale && (
-                <Badge variant="destructive" className="text-[10px]">
+                <Badge variant="destructive" className="shrink-0 text-[9px]">
                   Pending
                 </Badge>
               )}
             </div>
-            <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-(--color-muted-foreground)">
+            <div className="mt-0.5 flex flex-wrap gap-x-1.5 gap-y-0.5 text-[10px] text-(--color-muted-foreground)">
               {row.lead.customerPhone && (
-                <span className="flex items-center gap-1">
-                  <Phone className="size-3" />
-                  {formatPhone(row.lead.customerPhone)}
+                <span className="flex min-w-0 items-center gap-0.5">
+                  <Phone className="size-2.5 shrink-0" />
+                  <span className="truncate">{formatPhone(row.lead.customerPhone)}</span>
                 </span>
               )}
               {showHandleLine && (
-                <span className="flex items-center gap-1">
-                  <Instagram className="size-3" />@
+                <span className="flex items-center gap-0.5">
+                  <Instagram className="size-2.5" />@
                   {row.lead.igUsername?.replace(/^@/, "")}
                 </span>
               )}
               {!row.lead.customerPhone && !showHandleLine && (
-                <span className="italic">No phone yet</span>
+                <span className="italic">No phone</span>
               )}
             </div>
           </div>
@@ -252,30 +271,38 @@ function LeadRow({
       </td>
 
       <td
-        className="hidden max-w-md px-4 py-3 align-top text-sm text-(--color-muted-foreground) xl:table-cell"
+        className="hidden px-2 py-2 align-top md:table-cell"
         onClick={open}
       >
-        {transcript ? (
-          <div
-            className="max-h-52 cursor-pointer overflow-y-auto rounded-md border border-(--color-border)/60 bg-(--color-muted)/30 px-2 py-1.5 text-xs leading-relaxed"
-            title={transcript}
-          >
-            <p className="whitespace-pre-wrap break-words">{transcript}</p>
+        <div className="flex flex-col gap-1 text-[11px] leading-snug text-(--color-muted-foreground)">
+          <div className="flex items-start gap-1">
+            <CalendarDays className="mt-0.5 size-3 shrink-0 opacity-70" />
+            <span className="min-w-0">
+              <span className="text-(--color-muted-foreground)">Wedding </span>
+              <span className="font-medium text-(--color-foreground)">
+                {weddingLine}
+              </span>
+            </span>
           </div>
-        ) : row.lead.summary?.trim() ? (
-          <p className="cursor-pointer text-xs italic leading-snug">
-            No DMs in thread yet. Note: {row.lead.summary.trim()}
-          </p>
-        ) : (
-          <span className="text-xs italic">No messages yet</span>
-        )}
-      </td>
-
-      <td
-        className="hidden max-w-[11rem] px-3 py-3 align-top text-sm md:table-cell"
-        onClick={open}
-      >
-        <div className="flex flex-col gap-1.5">
+          <div className="flex items-start gap-1">
+            <Users className="mt-0.5 size-3 shrink-0 opacity-70" />
+            <span className="min-w-0">
+              <span className="text-(--color-muted-foreground)">Guests </span>
+              <span className="font-medium text-(--color-foreground)">
+                {guestLine}
+              </span>
+            </span>
+          </div>
+          {snippet ? (
+            <p
+              className="line-clamp-2 text-[10px] text-(--color-foreground)/85"
+              title={snippetSource}
+            >
+              {snippet}
+            </p>
+          ) : (
+            <p className="text-[10px] italic opacity-70">No message yet</p>
+          )}
           <div onClick={(e) => e.stopPropagation()}>
             <Select
               value={monthSelectValue(row.lead.eventDate)}
@@ -288,10 +315,10 @@ function LeadRow({
               }}
             >
               <SelectTrigger
-                className="h-8 w-full min-w-0 py-0 text-xs"
+                className="h-7 w-full min-w-0 py-0 text-[10px]"
                 aria-label="Wedding month"
               >
-                <SelectValue placeholder="Month" />
+                <SelectValue placeholder="Set month" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={EVENT_NONE}>No date</SelectItem>
@@ -303,34 +330,10 @@ function LeadRow({
               </SelectContent>
             </Select>
           </div>
-          {row.lead.eventDate ? (
-            <span className="flex items-center gap-1 text-[11px] text-(--color-muted-foreground)">
-              <CalendarDays className="size-3 shrink-0" />
-              {format(
-                typeof row.lead.eventDate === "string"
-                  ? parseISO(row.lead.eventDate.slice(0, 10))
-                  : new Date(row.lead.eventDate),
-                "d MMM yyyy",
-              )}
-            </span>
-          ) : null}
-          {row.lead.guestCount != null ? (
-            <span className="flex items-center gap-1.5 text-xs text-(--color-muted-foreground)">
-              <Users className="size-3 shrink-0" />
-              {row.lead.guestCount} guests
-            </span>
-          ) : (
-            <span className="text-xs italic text-(--color-muted-foreground)">
-              Capacity TBD
-            </span>
-          )}
         </div>
       </td>
 
-      <td
-        className="px-4 py-3 align-top"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <td className="px-2 py-2 align-top" onClick={(e) => e.stopPropagation()}>
         <Select
           value={status}
           onValueChange={(v) => {
@@ -340,10 +343,10 @@ function LeadRow({
           }}
         >
           <SelectTrigger
-            className="h-8 min-w-[140px] gap-2 py-0"
+            className="h-7 min-w-0 gap-1.5 py-0 text-xs"
             aria-label="Change status"
           >
-            <span className={`size-2 rounded-full ${STATUS_DOT[status]}`} />
+            <span className={`size-1.5 shrink-0 rounded-full ${STATUS_DOT[status]}`} />
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -360,7 +363,7 @@ function LeadRow({
       </td>
 
       <td
-        className="hidden px-4 py-3 align-top lg:table-cell"
+        className="hidden px-2 py-2 align-top md:table-cell"
         onClick={(e) => e.stopPropagation()}
       >
         <Select
@@ -374,11 +377,11 @@ function LeadRow({
           }}
         >
           <SelectTrigger
-            className="h-8 min-w-[150px] py-0"
+            className="h-7 min-w-0 py-0 text-xs"
             aria-label="Change assignee"
           >
-            <span className="flex items-center gap-1.5 text-sm">
-              <UserRound className="size-3" />
+            <span className="flex min-w-0 items-center gap-1 text-xs">
+              <UserRound className="size-3 shrink-0" />
               <SelectValue />
             </span>
           </SelectTrigger>
@@ -394,43 +397,38 @@ function LeadRow({
       </td>
 
       <td
-        className="hidden px-4 py-3 align-top text-xs text-(--color-muted-foreground) xl:table-cell"
+        className="hidden px-1 py-2 align-top text-[10px] text-(--color-muted-foreground) lg:table-cell"
         onClick={open}
       >
-        <div className="flex flex-col gap-1">
-          <span className="flex items-center gap-1">
-            <MessageSquare className="size-3" /> {row.messageCount}{" "}
-            {row.messageCount === 1 ? "message" : "messages"}
+        <span className="tabular-nums">{row.messageCount} msg</span>
+        {row.commentCount > 0 && (
+          <span className="tabular-nums">
+            {" · "}
+            {row.commentCount} note{row.commentCount === 1 ? "" : "s"}
           </span>
-          {row.commentCount > 0 && (
-            <span className="flex items-center gap-1">
-              <NotebookText className="size-3" /> {row.commentCount}{" "}
-              {row.commentCount === 1 ? "note" : "notes"}
-            </span>
-          )}
-          {row.openReminderCount > 0 && (
-            <span className="flex items-center gap-1 text-(--color-warning-foreground, var(--color-foreground))">
-              <Bell className="size-3" /> {row.openReminderCount} reminder
-              {row.openReminderCount === 1 ? "" : "s"}
-            </span>
-          )}
-        </div>
+        )}
+        {row.openReminderCount > 0 && (
+          <span className="mt-0.5 flex items-center gap-0.5 text-(--color-warning-foreground, var(--color-foreground))">
+            <Bell className="size-2.5" />
+            {row.openReminderCount}
+          </span>
+        )}
       </td>
 
       <td
-        className="min-w-[9.5rem] px-4 py-3 align-top whitespace-nowrap"
+        className="px-2 py-2 align-top"
         title={activity.fullStamp}
         onClick={open}
       >
-        <span className="block text-xs font-medium text-(--color-foreground) tabular-nums">
+        <span className="block text-[11px] font-medium tabular-nums leading-tight text-(--color-foreground)">
           {activity.relative}
         </span>
-        <span className="block text-[11px] text-(--color-muted-foreground) tabular-nums">
+        <span className="block text-[10px] tabular-nums text-(--color-muted-foreground)">
           {activity.shortStamp}
         </span>
       </td>
 
-      <td className="w-10 px-2 py-3 align-top text-right" onClick={open}>
+      <td className="px-1 py-2 align-top text-right" onClick={open}>
         <ChevronRight className="ml-auto size-4 text-(--color-muted-foreground)" />
       </td>
     </tr>
@@ -440,14 +438,14 @@ function LeadRow({
 function SourceIcon({ source }: { source: "instagram" | "manual" }) {
   if (source === "instagram") {
     return (
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-pink-100 text-pink-700">
-        <Instagram className="size-4" />
+      <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-pink-100 text-pink-700">
+        <Instagram className="size-3.5" />
       </span>
     );
   }
   return (
-    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-(--color-muted) text-(--color-muted-foreground)">
-      <MessageSquare className="size-4" />
+    <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-(--color-muted) text-(--color-muted-foreground)">
+      <MessageSquare className="size-3.5" />
     </span>
   );
 }

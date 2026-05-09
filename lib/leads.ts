@@ -1,11 +1,9 @@
 import "server-only";
 import {
   and,
-  asc,
   desc,
   eq,
   gte,
-  inArray,
   isNotNull,
   isNull,
   lt,
@@ -58,29 +56,6 @@ export type LeadFilter = {
   /** URL param `phone`: `yes` = has non-empty phone, `no` = missing/blank */
   hasPhone?: "all" | "yes" | "no";
 };
-
-const MAX_TRANSCRIPT_MESSAGES = 80;
-const MAX_TRANSCRIPT_CHARS = 4500;
-
-function buildConversationSummary(
-  msgs: { direction: string; content: string }[],
-): string {
-  if (msgs.length === 0) return "";
-  const slice =
-    msgs.length > MAX_TRANSCRIPT_MESSAGES
-      ? msgs.slice(-MAX_TRANSCRIPT_MESSAGES)
-      : msgs;
-  const parts = slice.map((m) => {
-    const who = m.direction === "out" ? "Lush Wedding" : "Guest";
-    const text = m.content.replace(/\s+/g, " ").trim();
-    return `${who}: ${text}`;
-  });
-  let out = parts.join("\n\n");
-  if (out.length > MAX_TRANSCRIPT_CHARS) {
-    out = `…\n\n${out.slice(out.length - MAX_TRANSCRIPT_CHARS + 3)}`;
-  }
-  return out;
-}
 
 export async function listLeads(filter: LeadFilter = {}) {
   const conds = [] as ReturnType<typeof eq>[];
@@ -145,47 +120,21 @@ export async function listLeads(filter: LeadFilter = {}) {
         SELECT count(*)::int FROM ${reminders}
         WHERE ${reminders.leadId} = ${leads.id} AND ${reminders.completed} = false
       )`,
+      lastGuestPreview: sql<string | null>`(
+        SELECT ${messages.content}
+        FROM ${messages}
+        WHERE ${messages.leadId} = ${leads.id}
+          AND ${messages.direction} = 'in'
+        ORDER BY ${messages.createdAt} DESC
+        LIMIT 1
+      )`,
     })
     .from(leads)
     .leftJoin(employees, eq(leads.assignedTo, employees.id))
     .where(where)
     .orderBy(desc(activityAt));
 
-  const leadIds = rows.map((r) => r.lead.id);
-  const conversationByLead = new Map<string, string>();
-  if (leadIds.length > 0) {
-    const allMsgs = await db
-      .select({
-        leadId: messages.leadId,
-        direction: messages.direction,
-        content: messages.content,
-        createdAt: messages.createdAt,
-      })
-      .from(messages)
-      .where(inArray(messages.leadId, leadIds))
-      .orderBy(asc(messages.createdAt));
-
-    const grouped = new Map<
-      string,
-      { direction: string; content: string }[]
-    >();
-    for (const m of allMsgs) {
-      const g = grouped.get(m.leadId) ?? [];
-      g.push({ direction: m.direction, content: m.content });
-      grouped.set(m.leadId, g);
-    }
-    for (const id of leadIds) {
-      conversationByLead.set(
-        id,
-        buildConversationSummary(grouped.get(id) ?? []),
-      );
-    }
-  }
-
-  return rows.map((r) => ({
-    ...r,
-    conversationSummary: conversationByLead.get(r.lead.id) ?? "",
-  }));
+  return rows;
 }
 
 export type LeadStats = {
