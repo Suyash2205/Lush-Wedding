@@ -11,7 +11,8 @@
     "db:migrate": "tsx db/migrate.ts",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "db:seed": "tsx db/seed.ts"
+    "db:seed": "tsx db/seed.ts",
+    "deploy:vercel": "vercel deploy --prod --yes"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.3.1",

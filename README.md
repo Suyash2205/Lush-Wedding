@@ -160,6 +160,16 @@ Then in the Vercel dashboard for the project:
 5. Update `NEXT_PUBLIC_APP_URL` to your production URL and redeploy.
 6. Update Meta's webhook Callback URL to point at your production domain.
 
+### Automatic deploy when you push to GitHub
+
+**Option A (simplest):** Vercel → your project → **Settings → Git** → connect this repo and set the production branch to `main`. Every `git push` to `main` deploys production — no extra setup.
+
+**Option B:** Add GitHub Actions secrets **`VERCEL_TOKEN`**, **`VERCEL_ORG_ID`**, **`VERCEL_PROJECT_ID`** (GitHub repo → **Settings → Secrets and variables → Actions**). Values: [create a token](https://vercel.com/account/tokens); org and project IDs are under Vercel → project → **Settings → General**. The workflow [`.github/workflows/deploy-vercel.yml`](.github/workflows/deploy-vercel.yml) runs a production deploy on each push to `main`.
+
+Use **either** Option A **or** Option B — not both — or every push will trigger **two** production deploys.
+
+From your machine you can still run **`npm run deploy:vercel`** after a push if you want an immediate deploy without waiting for GitHub.
+
 The cron in `vercel.json` triggers `/api/cron/stale-leads` once per day at
 03:30 UTC (~09:00 IST) on Hobby plans. Upgrade to Pro and change the schedule to
 `0 * * * *` for hourly digests. The in-dashboard "Pending" red badge updates on

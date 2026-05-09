@@ -1,0 +1,8 @@
+---
+description: Redeploy Vercel after pushing to GitHub main
+alwaysApply: true
+---
+
+# Vercel after Git push
+
+When you finish a successful `git push` to `origin/main` for this repo (or merge to `main`), run **`npm run deploy:vercel`** from the project root with network access so production updates, **unless** the user has said they rely only on **Vercel → Settings → Git** or **GitHub Actions** (`.github/workflows/deploy-vercel.yml` with secrets) and do not want a CLI deploy (to avoid a second production build).
