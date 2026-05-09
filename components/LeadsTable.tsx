@@ -14,6 +14,10 @@ import {
   Users,
   UserRound,
 } from "lucide-react";
+import {
+  primaryLeadTitle,
+  shouldShowInstagramHandleInSubtitle,
+} from "@/lib/lead-display";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -136,6 +140,8 @@ function LeadRow({
   }
 
   const summary = row.lead.summary?.trim();
+  const title = primaryLeadTitle(row.lead);
+  const showHandleLine = shouldShowInstagramHandleInSubtitle(row.lead, title);
 
   return (
     <tr
@@ -151,9 +157,7 @@ function LeadRow({
           <SourceIcon source={row.lead.source} />
           <div className="min-w-0">
             <div className="flex items-center gap-2 font-medium">
-              <span className="truncate">
-                {row.lead.customerName || row.lead.igUsername || "Unknown lead"}
-              </span>
+              <span className="truncate">{title}</span>
               {row.stale && (
                 <Badge variant="destructive" className="text-[10px]">
                   Pending
@@ -167,13 +171,14 @@ function LeadRow({
                   {formatPhone(row.lead.customerPhone)}
                 </span>
               )}
-              {row.lead.igUsername && (
+              {showHandleLine && (
                 <span className="flex items-center gap-1">
-                  <Instagram className="size-3" />@{row.lead.igUsername}
+                  <Instagram className="size-3" />@
+                  {row.lead.igUsername?.replace(/^@/, "")}
                 </span>
               )}
-              {!row.lead.customerPhone && !row.lead.igUsername && (
-                <span className="italic">No contact yet</span>
+              {!row.lead.customerPhone && !showHandleLine && (
+                <span className="italic">No phone yet</span>
               )}
             </div>
           </div>

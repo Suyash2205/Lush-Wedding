@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { leads, messages } from "@/db/schema";
 import { verifyMetaSignature } from "@/lib/meta/verify";
 import { parseIgWebhook, type IgWebhookPayload } from "@/lib/meta/instagram";
+import { fetchInstagramMessagingSenderProfile } from "@/lib/meta/instagram-profile";
 import { extractFirstPhone, truncate } from "@/lib/utils";
 
 export const runtime = "nodejs";
@@ -79,6 +80,18 @@ async function ingestEvent(
     .where(eq(leads.igUserId, ev.senderId))
     .limit(1);
 
+  const webhookUsername = ev.senderUsername?.trim();
+  let resolvedUsername =
+    webhookUsername || found[0]?.igUsername?.trim() || undefined;
+  let resolvedNameFromGraph: string | undefined;
+
+  // Webhooks usually omit sender.username — resolve via Graph API when possible.
+  if (!resolvedUsername) {
+    const p = await fetchInstagramMessagingSenderProfile(ev.senderId);
+    if (p?.username?.trim()) resolvedUsername = p.username.trim();
+    if (p?.name?.trim()) resolvedNameFromGraph = p.name.trim();
+  }
+
   let leadId: string;
   if (found[0]) {
     leadId = found[0].id;
@@ -103,8 +116,14 @@ async function ingestEvent(
       update.customerPhone = phoneFromMsg;
       update.status = "awaiting_callback";
     }
-    if (ev.senderUsername && !found[0].igUsername) {
-      update.igUsername = ev.senderUsername;
+    if (resolvedUsername && !found[0].igUsername) {
+      update.igUsername = resolvedUsername;
+    }
+    if (
+      resolvedNameFromGraph &&
+      !(found[0].customerName && found[0].customerName.trim())
+    ) {
+      update.customerName = resolvedNameFromGraph;
     }
 
     await db.update(leads).set(update).where(eq(leads.id, leadId));
@@ -115,7 +134,8 @@ async function ingestEvent(
       .values({
         source: "instagram",
         igUserId: ev.senderId,
-        igUsername: ev.senderUsername ?? null,
+        igUsername: resolvedUsername ?? null,
+        customerName: resolvedNameFromGraph ?? null,
         customerPhone: phoneFromMsg,
         summary: truncate(ev.text, 240),
         status: phoneFromMsg ? "awaiting_callback" : "new",

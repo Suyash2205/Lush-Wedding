@@ -41,8 +41,10 @@ export async function POST(req: Request) {
   const sample = [
     {
       id: "00000000-0000-0000-0000-000000000001",
+      source: "manual" as const,
       customerName: "Sample Lead",
       igUsername: null,
+      igUserId: null,
       summary:
         "This is a test stale-lead digest. If you can read this, Resend is working and the daily cron will email you when a real lead has been sitting too long.",
       lastInboundAt: new Date(Date.now() - 1000 * 60 * 60 * 4),

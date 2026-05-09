@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowLeft, CalendarDays, ExternalLink, Phone, Users } from "lucide-react";
 import { format } from "date-fns";
 import { getLeadDetail, listEmployees } from "@/lib/leads";
+import { primaryLeadTitle, shouldShowInstagramHandleInSubtitle } from "@/lib/lead-display";
 import { formatPhone } from "@/lib/utils";
 import { ChatTranscript } from "@/components/ChatTranscript";
 import { CommentList } from "@/components/CommentList";
@@ -22,6 +23,12 @@ export default async function LeadDetailPage({
   const employees = await listEmployees();
   const { lead, messages, comments, reminders } = detail;
 
+  const leadTitle = primaryLeadTitle(lead);
+  const showIgHandleSecondary = shouldShowInstagramHandleInSubtitle(
+    lead,
+    leadTitle,
+  );
+
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <Link
@@ -34,9 +41,7 @@ export default async function LeadDetailPage({
       <div className="flex flex-col gap-4 rounded-xl border border-(--color-border) bg-(--color-card) p-5 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-xl font-semibold">
-              {lead.customerName || lead.igUsername || "Unknown lead"}
-            </h1>
+            <h1 className="text-xl font-semibold">{leadTitle}</h1>
             <StatusBadge status={lead.status} />
             {lead.source === "instagram" && (
               <span className="inline-flex items-center gap-1 rounded-md bg-pink-100 px-2 py-0.5 text-xs text-pink-700">
@@ -63,14 +68,14 @@ export default async function LeadDetailPage({
                 No phone number captured yet — ask in the DM thread.
               </span>
             )}
-            {lead.igUsername && (
+            {showIgHandleSecondary && lead.igUsername && (
               <a
                 href={`https://instagram.com/${lead.igUsername}`}
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center gap-1.5 text-(--color-muted-foreground) hover:text-(--color-foreground)"
               >
-                @{lead.igUsername}
+                @{lead.igUsername.replace(/^@/, "")}
                 <ExternalLink className="size-3" />
               </a>
             )}

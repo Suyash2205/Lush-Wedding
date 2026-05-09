@@ -1,6 +1,7 @@
 import "server-only";
 import { Resend } from "resend";
 import type { Lead } from "@/db/schema";
+import { primaryLeadTitle } from "@/lib/lead-display";
 
 let resend: Resend | null = null;
 function getResend() {
@@ -12,7 +13,17 @@ function getResend() {
 
 export async function sendStaleDigest(opts: {
   to: string;
-  leads: Pick<Lead, "id" | "customerName" | "igUsername" | "summary" | "lastInboundAt" | "createdAt">[];
+  leads: Pick<
+    Lead,
+    | "id"
+    | "source"
+    | "customerName"
+    | "igUsername"
+    | "igUserId"
+    | "summary"
+    | "lastInboundAt"
+    | "createdAt"
+  >[];
   appUrl: string;
 }) {
   const r = getResend();
@@ -36,7 +47,7 @@ export async function sendStaleDigest(opts: {
     .map(
       (l) =>
         `<tr style="border-bottom:1px solid #e5e7eb">
-          <td style="padding:8px 12px"><a href="${opts.appUrl}/leads/${l.id}">${escape(l.customerName ?? l.igUsername ?? "Unknown lead")}</a></td>
+          <td style="padding:8px 12px"><a href="${opts.appUrl}/leads/${l.id}">${escape(primaryLeadTitle(l))}</a></td>
           <td style="padding:8px 12px;color:#6b7280">${escape(l.summary ? truncate(l.summary, 90) : "")}</td>
           <td style="padding:8px 12px;color:#6b7280;font-size:12px">${escape(new Date(l.lastInboundAt ?? l.createdAt).toLocaleString())}</td>
         </tr>`,
@@ -60,7 +71,7 @@ export async function sendStaleDigest(opts: {
     opts.leads
       .map(
         (l) =>
-          `- ${l.customerName ?? l.igUsername ?? "Unknown lead"}: ${l.summary ? truncate(l.summary, 90) : ""}\n  ${opts.appUrl}/leads/${l.id}`,
+          `- ${primaryLeadTitle(l)}: ${l.summary ? truncate(l.summary, 90) : ""}\n  ${opts.appUrl}/leads/${l.id}`,
       )
       .join("\n") +
     `\n\nOpen dashboard: ${opts.appUrl}/leads?status=new`;

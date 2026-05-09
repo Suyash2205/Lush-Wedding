@@ -100,28 +100,33 @@ sufficient for a single business operating on its own IG account.
    - **Facebook Login for Business**
 
 3. Open **Instagram -> API Setup** in the left sidebar. Connect your IG Business
-   account. Generate a **long-lived access token** and save it. (We don't actively
-   use it for sending in v1, but Meta requires the connection.)
+   account. Generate a **long-lived Page access token**.
 
-4. Copy your **App Secret** (App settings -> Basic -> App Secret). Set it as
-   `META_APP_SECRET` in your deployment's environment variables.
+4. Paste that token into **`META_PAGE_ACCESS_TOKEN`** in your deployment (Vercel
+   env vars, then redeploy). The webhook uses it to call Meta's Graph API and
+   fetch each DM sender's public **@username** — webhooks almost never include
+   `sender.username` by default, so without this token leads would only show an
+   opaque Instagram ID until someone types the handle manually.
 
-5. In your dashboard at `/settings/integration`, copy the **Callback URL** and
+5. Copy your **App Secret** (App settings -> Basic -> App Secret). Set it as
+   **`META_APP_SECRET`** in your deployment's environment variables.
+
+6. In your dashboard at `/settings/integration`, copy the **Callback URL** and
    **Verify Token**. In Meta's app dashboard, go to **Webhooks**, pick the
    **Instagram** object, paste both values, and subscribe to the
    `messages` field. Meta will GET your URL — it should respond with the
    challenge and the subscription will turn green.
 
-6. Add yourself (and any agents) as **Developers** or **Testers** under
+7. Add yourself (and any agents) as **Developers** or **Testers** under
    `App Roles -> Roles`. In Dev Mode the webhook will receive messages sent to
    your IG Business account.
 
-7. On your phone, configure Instagram's built-in FAQs:
+8. On your phone, configure Instagram's built-in FAQs:
    IG -> Profile -> Settings and Privacy -> Business Tools and Controls ->
    **Frequently Asked Questions**. Add the 3 Q/A pairs. Use the copy-paste text
    shown on the **Venue** settings page in this dashboard.
 
-8. **Test**: from a different IG account that's also a tester, send a DM to your
+9. **Test**: from a different IG account that's also a tester, send a DM to your
    business account. Within a second, a new lead should appear at `/leads`.
 
 ## Deploying to Vercel

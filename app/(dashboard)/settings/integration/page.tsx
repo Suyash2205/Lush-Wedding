@@ -18,6 +18,10 @@ export default async function IntegrationSettingsPage() {
   const verifyToken = process.env.META_VERIFY_TOKEN || "(not set yet — set META_VERIFY_TOKEN in your env)";
 
   const hasAppSecret = Boolean(process.env.META_APP_SECRET);
+  const hasPageToken = Boolean(
+    process.env.META_PAGE_ACCESS_TOKEN ||
+      process.env.INSTAGRAM_PAGE_ACCESS_TOKEN,
+  );
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -61,6 +65,41 @@ export default async function IntegrationSettingsPage() {
 
       <Card>
         <CardHeader>
+          <CardTitle>Instagram @handles in the dashboard</CardTitle>
+          <CardDescription>
+            Webhook payloads rarely include <code>sender.username</code>. Without a
+            follow-up lookup, leads show only an internal Instagram ID until someone
+            types the handle by hand.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <p>
+            Paste the same <b>long-lived Page access token</b> from your Meta app&apos;s{" "}
+            <b>Instagram → API Setup</b> page into{" "}
+            <code className="rounded bg-(--color-muted) px-1 py-0.5 text-xs">
+              META_PAGE_ACCESS_TOKEN
+            </code>{" "}
+            on Vercel (and redeploy).
+          </p>
+          <p className="text-xs text-(--color-muted-foreground)">
+            Status:{" "}
+            {hasPageToken ? (
+              <span className="font-medium text-(--color-success)">
+                META_PAGE_ACCESS_TOKEN is set ✓ — new DMs should resolve @handles
+                automatically.
+              </span>
+            ) : (
+              <span className="font-medium text-(--color-warning)">
+                not set — leads will show as &ldquo;Instagram 1234&hellip;5678&rdquo;
+                until you add the token or fill the handle after a phone call.
+              </span>
+            )}
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Setup steps</CardTitle>
         </CardHeader>
         <CardContent>
@@ -91,10 +130,12 @@ export default async function IntegrationSettingsPage() {
               IG account.
             </Step>
             <Step n={4}>
-              On the same API Setup page, generate a <b>long-lived access token</b>{" "}
-              and save it. (We don&apos;t use it for sending in v1, but Meta requires it.)
-              Copy your <b>App Secret</b> from Basic Settings into your
-              deployment&apos;s <code>META_APP_SECRET</code> env var.
+              On the same API Setup page, generate a <b>long-lived Page access token</b>{" "}
+              and add it as <code>META_PAGE_ACCESS_TOKEN</code> on Vercel (then
+              redeploy). Our webhook uses this to fetch each DM sender&apos;s public{" "}
+              <b>@username</b> via the Graph API, because webhook JSON usually omits
+              it. Also copy your <b>App Secret</b> into{" "}
+              <code>META_APP_SECRET</code>.
             </Step>
             <Step n={5}>
               Open <b>Webhooks</b> in the app. Pick the <b>Instagram</b> object.
