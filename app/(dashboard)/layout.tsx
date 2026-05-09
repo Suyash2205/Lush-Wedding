@@ -50,7 +50,7 @@ export default async function DashboardLayout({
           <UserButton />
         </div>
       </header>
-      <main className="flex-1 px-4 py-6 md:px-6 md:py-8">{children}</main>
+      <main className="min-w-0 flex-1 px-4 py-6 md:px-6 md:py-8">{children}</main>
       <nav className="sticky bottom-0 z-30 flex items-center justify-around border-t border-(--color-border) bg-(--color-background) px-2 py-1 md:hidden">
         <MobileNavLink href="/leads" icon={<Inbox className="size-5" />} label="Leads" />
         {isOwner && (
