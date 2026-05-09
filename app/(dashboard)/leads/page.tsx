@@ -16,6 +16,7 @@ interface PageProps {
     status?: string;
     assignedTo?: string;
     source?: string;
+    phone?: string;
     eventDateFrom?: string;
     eventDateTo?: string;
   }>;
@@ -24,10 +25,15 @@ interface PageProps {
 export default async function LeadsPage({ searchParams }: PageProps) {
   const params = await searchParams;
 
+  const phoneParam = params.phone?.trim();
+  const hasPhone: "all" | "yes" | "no" =
+    phoneParam === "yes" || phoneParam === "no" ? phoneParam : "all";
+
   const filter = {
     status: (params.status ?? "all") as LeadStatus | "all",
     assignedTo: params.assignedTo ?? "all",
     source: (params.source ?? "all") as "instagram" | "manual" | "all",
+    hasPhone,
     eventDateFrom: params.eventDateFrom?.trim() || undefined,
     eventDateTo: params.eventDateTo?.trim() || undefined,
   };
@@ -76,6 +82,7 @@ export default async function LeadsPage({ searchParams }: PageProps) {
           status: filter.status,
           assignedTo: filter.assignedTo,
           source: filter.source,
+          phone: filter.hasPhone,
           eventDateFrom: filter.eventDateFrom ?? "",
           eventDateTo: filter.eventDateTo ?? "",
         }}

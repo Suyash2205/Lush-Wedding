@@ -92,6 +92,8 @@ export type LeadRowData = {
   messageCount: number;
   commentCount: number;
   openReminderCount: number;
+  /** DM transcript (guest + Lush Wedding), built on the server */
+  conversationSummary: string;
   stale: boolean;
 };
 
@@ -115,7 +117,7 @@ export function LeadsTable({
             </th>
             <th className="px-4 py-2 text-left">Lead</th>
             <th className="hidden px-4 py-2 text-left xl:table-cell">
-              Initial requirement
+              Conversation
             </th>
             <th className="hidden px-3 py-2 text-left md:table-cell">
               Event date
@@ -197,7 +199,7 @@ function LeadRow({
     router.push(`/leads/${row.lead.id}`);
   }
 
-  const summary = row.lead.summary?.trim();
+  const transcript = row.conversationSummary?.trim();
   const title = primaryLeadTitle(row.lead);
   const showHandleLine = shouldShowInstagramHandleInSubtitle(row.lead, title);
 
@@ -250,15 +252,22 @@ function LeadRow({
       </td>
 
       <td
-        className="hidden max-w-[360px] px-4 py-3 align-top text-sm text-(--color-muted-foreground) xl:table-cell"
+        className="hidden max-w-md px-4 py-3 align-top text-sm text-(--color-muted-foreground) xl:table-cell"
         onClick={open}
       >
-        {summary ? (
-          <p className="line-clamp-3 cursor-pointer whitespace-pre-line leading-snug">
-            {summary}
+        {transcript ? (
+          <div
+            className="max-h-52 cursor-pointer overflow-y-auto rounded-md border border-(--color-border)/60 bg-(--color-muted)/30 px-2 py-1.5 text-xs leading-relaxed"
+            title={transcript}
+          >
+            <p className="whitespace-pre-wrap break-words">{transcript}</p>
+          </div>
+        ) : row.lead.summary?.trim() ? (
+          <p className="cursor-pointer text-xs italic leading-snug">
+            No DMs in thread yet. Note: {row.lead.summary.trim()}
           </p>
         ) : (
-          <span className="text-xs italic">No summary captured yet</span>
+          <span className="text-xs italic">No messages yet</span>
         )}
       </td>
 

@@ -1,5 +1,18 @@
 import "server-only";
-import { and, desc, eq, gte, isNotNull, isNull, lt, lte, or, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gte,
+  inArray,
+  isNotNull,
+  isNull,
+  lt,
+  lte,
+  or,
+  sql,
+} from "drizzle-orm";
 import { db } from "@/db";
 import {
   leads,
@@ -42,7 +55,32 @@ export type LeadFilter = {
   /** Inclusive `YYYY-MM-DD` — only leads with a non-null `event_date` in range */
   eventDateFrom?: string;
   eventDateTo?: string;
+  /** URL param `phone`: `yes` = has non-empty phone, `no` = missing/blank */
+  hasPhone?: "all" | "yes" | "no";
 };
+
+const MAX_TRANSCRIPT_MESSAGES = 80;
+const MAX_TRANSCRIPT_CHARS = 4500;
+
+function buildConversationSummary(
+  msgs: { direction: string; content: string }[],
+): string {
+  if (msgs.length === 0) return "";
+  const slice =
+    msgs.length > MAX_TRANSCRIPT_MESSAGES
+      ? msgs.slice(-MAX_TRANSCRIPT_MESSAGES)
+      : msgs;
+  const parts = slice.map((m) => {
+    const who = m.direction === "out" ? "Lush Wedding" : "Guest";
+    const text = m.content.replace(/\s+/g, " ").trim();
+    return `${who}: ${text}`;
+  });
+  let out = parts.join("\n\n");
+  if (out.length > MAX_TRANSCRIPT_CHARS) {
+    out = `…\n\n${out.slice(out.length - MAX_TRANSCRIPT_CHARS + 3)}`;
+  }
+  return out;
+}
 
 export async function listLeads(filter: LeadFilter = {}) {
   const conds = [] as ReturnType<typeof eq>[];
@@ -77,6 +115,16 @@ export async function listLeads(filter: LeadFilter = {}) {
       and(isNotNull(leads.eventDate), lte(leads.eventDate, to)) as never,
     );
   }
+  if (filter.hasPhone === "yes") {
+    conds.push(
+      sql`trim(coalesce(${leads.customerPhone}, '')) <> ''` as never,
+    );
+  }
+  if (filter.hasPhone === "no") {
+    conds.push(
+      sql`trim(coalesce(${leads.customerPhone}, '')) = ''` as never,
+    );
+  }
 
   const where = conds.length ? and(...conds) : undefined;
 
@@ -103,7 +151,41 @@ export async function listLeads(filter: LeadFilter = {}) {
     .where(where)
     .orderBy(desc(activityAt));
 
-  return rows;
+  const leadIds = rows.map((r) => r.lead.id);
+  const conversationByLead = new Map<string, string>();
+  if (leadIds.length > 0) {
+    const allMsgs = await db
+      .select({
+        leadId: messages.leadId,
+        direction: messages.direction,
+        content: messages.content,
+        createdAt: messages.createdAt,
+      })
+      .from(messages)
+      .where(inArray(messages.leadId, leadIds))
+      .orderBy(asc(messages.createdAt));
+
+    const grouped = new Map<
+      string,
+      { direction: string; content: string }[]
+    >();
+    for (const m of allMsgs) {
+      const g = grouped.get(m.leadId) ?? [];
+      g.push({ direction: m.direction, content: m.content });
+      grouped.set(m.leadId, g);
+    }
+    for (const id of leadIds) {
+      conversationByLead.set(
+        id,
+        buildConversationSummary(grouped.get(id) ?? []),
+      );
+    }
+  }
+
+  return rows.map((r) => ({
+    ...r,
+    conversationSummary: conversationByLead.get(r.lead.id) ?? "",
+  }));
 }
 
 export type LeadStats = {

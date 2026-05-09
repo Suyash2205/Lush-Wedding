@@ -32,6 +32,7 @@ export function LeadFilters({
     status: string;
     assignedTo: string;
     source: string;
+    phone: string;
     eventDateFrom: string;
     eventDateTo: string;
   };
@@ -44,7 +45,10 @@ export function LeadFilters({
     router.push(q ? `/leads?${q}` : "/leads");
   }
 
-  function update(key: "status" | "assignedTo" | "source", value: string) {
+  function update(
+    key: "status" | "assignedTo" | "source" | "phone",
+    value: string,
+  ) {
     const next = new URLSearchParams(params.toString());
     if (value === "all") next.delete(key);
     else next.set(key, value);
@@ -130,6 +134,20 @@ export function LeadFilters({
                   : "Manual"}
             </SelectItem>
           ))}
+        </SelectContent>
+      </Select>
+
+      <Select
+        value={current.phone}
+        onValueChange={(v) => update("phone", v)}
+      >
+        <SelectTrigger className="w-[160px]">
+          <SelectValue placeholder="Phone" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All leads</SelectItem>
+          <SelectItem value="yes">Has phone</SelectItem>
+          <SelectItem value="no">No phone</SelectItem>
         </SelectContent>
       </Select>
     </div>
