@@ -105,8 +105,14 @@ sufficient for a single business operating on its own IG account.
 4. Paste that token into **`META_PAGE_ACCESS_TOKEN`** in your deployment (Vercel
    env vars, then redeploy). The webhook uses it to call Meta's Graph API and
    fetch each DM sender's public **@username** — webhooks almost never include
-   `sender.username` by default, so without this token leads would only show an
-   opaque Instagram ID until someone types the handle manually.
+   `sender.username` by default. The token must be a **Page** token with
+   `instagram_basic`, `instagram_manage_messages`, `pages_manage_metadata`,
+   `pages_read_engagement`, and `pages_show_list` (see Meta [User Profile API](https://developers.facebook.com/docs/messenger-platform/instagram/features/user-profile/)).
+   Without a valid token, leads show as `Instagram · 1234…5678` instead of `@handle`.
+
+   After fixing the token, open **Settings → Integration** in this app and click
+   **Refresh handles for existing leads** to backfill usernames for rows already in
+   the database.
 
 5. Copy your **App Secret** (App settings -> Basic -> App Secret). Set it as
    **`META_APP_SECRET`** in your deployment's environment variables.

@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { getOrCreateEmployee } from "@/lib/auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CopyField } from "@/components/CopyField";
+import { RefreshInstagramHandlesButton } from "@/components/RefreshInstagramHandlesButton";
 
 export default async function IntegrationSettingsPage() {
   const me = await getOrCreateEmployee();
@@ -72,21 +73,50 @@ export default async function IntegrationSettingsPage() {
             types the handle by hand.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-2 text-sm">
+        <CardContent className="space-y-3 text-sm">
           <p>
             Paste the same <b>long-lived Page access token</b> from your Meta app&apos;s{" "}
             <b>Instagram → API Setup</b> page into{" "}
             <code className="rounded bg-(--color-muted) px-1 py-0.5 text-xs">
               META_PAGE_ACCESS_TOKEN
             </code>{" "}
-            on Vercel (and redeploy).
+            on Vercel (and redeploy). It must be a <b>Page</b> token (not a personal
+            user token), generated for the Facebook Page that is linked to your
+            Instagram professional account / DM inbox.
           </p>
+          <div className="rounded-md border border-(--color-border) bg-(--color-muted)/40 p-3 text-xs leading-relaxed text-(--color-muted-foreground)">
+            Meta requires these permissions on that token (
+            <a
+              href="https://developers.facebook.com/docs/messenger-platform/instagram/features/user-profile/"
+              target="_blank"
+              rel="noreferrer"
+              className="text-(--color-primary) hover:underline"
+            >
+              User Profile API
+            </a>
+            ):{" "}
+            <span className="font-mono text-[11px]">
+              instagram_basic, instagram_manage_messages, pages_manage_metadata,
+              pages_read_engagement, pages_show_list
+            </span>
+            . Generate the token while logged in as someone who has{" "}
+            <b>Moderate</b> access on your Facebook Page.
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <RefreshInstagramHandlesButton />
+            <span className="text-xs text-(--color-muted-foreground)">
+              Use after fixing the env var — backfills @handles on existing leads (
+              max {40}/click).
+            </span>
+          </div>
           <p className="text-xs text-(--color-muted-foreground)">
-            Status:{" "}
+            Env status:{" "}
             {hasPageToken ? (
-              <span className="font-medium text-(--color-success)">
-                META_PAGE_ACCESS_TOKEN is set ✓ — new DMs should resolve @handles
-                automatically.
+              <span className="font-medium text-(--color-foreground)">
+                META_PAGE_ACCESS_TOKEN is present. If lists still show
+                &ldquo;Instagram 1234…5678&rdquo;, the token is missing permissions or isn&apos;t
+                Page-scoped — check App Dashboard → <b>Use cases → Permissions</b>, then tap
+                <b> Refresh handles</b> above.
               </span>
             ) : (
               <span className="font-medium text-(--color-warning)">

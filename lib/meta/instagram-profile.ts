@@ -7,8 +7,11 @@ export type InstagramMessagingProfile = {
 };
 
 /**
- * Looks up Instagram username/display name using the instagram-scoped user id from webhooks.
- * Requires a Page access token tied to your linked Instagram Professional account:
+ * Looks up Instagram username/display name using the instagram-scoped user id (IGSID)
+ * from webhooks. Requires a **Page** access token generated from someone who can
+ * MODERATE the linked Facebook Page, with instagram_basic + instagram_manage_messages
+ * (see Meta User Profile API).
+ *
  * META_PAGE_ACCESS_TOKEN (or legacy INSTAGRAM_PAGE_ACCESS_TOKEN).
  */
 export async function fetchInstagramMessagingSenderProfile(
@@ -19,31 +22,58 @@ export async function fetchInstagramMessagingSenderProfile(
   if (!token) return null;
 
   const version =
-    process.env.META_GRAPH_API_VERSION?.trim().replace(/^v/, "v") ?? "v21.0";
+    process.env.META_GRAPH_API_VERSION?.trim().replace(/^v/, "v") ?? "v22.0";
   const v = version.startsWith("v") ? version : `v${version}`;
-  const url = new URL(
-    `https://graph.facebook.com/${v}/${encodeURIComponent(instagramScopedUserId)}`,
-  );
-  url.searchParams.set("fields", "name,username");
-  url.searchParams.set("access_token", token);
 
-  try {
-    const res = await fetch(url.toString(), { cache: "no-store" });
-    const data = (await res.json()) as InstagramMessagingProfile & {
-      error?: { message: string };
-    };
+  const fields = "name,username";
+  const bases = [
+    `https://graph.facebook.com/${v}`,
+    `https://graph.instagram.com/${v}`,
+  ] as const;
 
-    if (!res.ok || data.error) {
-      console.warn("[ig-profile] Graph lookup failed:", data.error?.message ?? res.status);
-      return null;
+  let lastError = "";
+
+  for (const base of bases) {
+    const url = new URL(`${base}/${encodeURIComponent(instagramScopedUserId)}`);
+    url.searchParams.set("fields", fields);
+    url.searchParams.set("access_token", token);
+
+    try {
+      const res = await fetch(url.toString(), { cache: "no-store" });
+      const data = (await res.json()) as InstagramMessagingProfile & {
+        error?: {
+          message?: string;
+          code?: number;
+          type?: string;
+          fbtrace_id?: string;
+        };
+      };
+
+      if (!res.ok || data.error) {
+        const e = data.error;
+        lastError = e
+          ? `${e.message ?? "error"} (code ${e.code ?? "?"})${e.fbtrace_id ? ` trace ${e.fbtrace_id}` : ""}`
+          : String(res.status);
+        console.warn(`[ig-profile] ${base} failed for ${instagramScopedUserId.slice(0, 6)}…:`, lastError);
+        continue;
+      }
+
+      const out: InstagramMessagingProfile = {};
+      if (data.username?.trim()) out.username = data.username.trim();
+      if (data.name?.trim()) out.name = data.name.trim();
+      if (Object.keys(out).length) return out;
+    } catch (e) {
+      lastError = e instanceof Error ? e.message : String(e);
+      console.warn(`[ig-profile] ${base} fetch error:`, lastError);
     }
-
-    const out: InstagramMessagingProfile = {};
-    if (data.username?.trim()) out.username = data.username.trim();
-    if (data.name?.trim()) out.name = data.name.trim();
-    return Object.keys(out).length ? out : null;
-  } catch (e) {
-    console.warn("[ig-profile] fetch error:", e);
-    return null;
   }
+
+  if (lastError) {
+    console.warn(
+      "[ig-profile] All lookups failed for IGSID; check META_PAGE_ACCESS_TOKEN is a Page token with instagram_basic + instagram_manage_messages. Last error:",
+      lastError,
+    );
+  }
+
+  return null;
 }
