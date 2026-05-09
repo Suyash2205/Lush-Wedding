@@ -64,8 +64,8 @@ export function LeadsTable({
   employees: { id: string; name: string }[];
 }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-(--color-border) bg-(--color-card)">
-      <table className="w-full">
+    <div className="overflow-x-auto rounded-xl border border-(--color-border) bg-(--color-card)">
+      <table className="min-w-[1040px] w-full">
         <thead className="bg-(--color-muted) text-xs uppercase text-(--color-muted-foreground)">
           <tr>
             <th className="px-4 py-2 text-left">Lead</th>
@@ -80,8 +80,10 @@ export function LeadsTable({
             <th className="hidden px-4 py-2 text-left xl:table-cell">
               Activity
             </th>
-            <th className="px-4 py-2 text-left">Last update</th>
-            <th className="w-10 px-2 py-2"></th>
+            <th className="min-w-[9.5rem] whitespace-nowrap px-4 py-2 text-left">
+              Last update
+            </th>
+            <th className="w-10 shrink-0 px-2 py-2"></th>
           </tr>
         </thead>
         <tbody>
@@ -109,13 +111,15 @@ function LeadRow({
     row.lead.assignedTo ?? "unassigned",
   );
 
-  const lastActivity = useMemo(
-    () =>
-      formatDistanceToNow(new Date(row.lead.lastInboundAt ?? row.lead.createdAt), {
-        addSuffix: true,
-      }),
-    [row.lead.lastInboundAt, row.lead.createdAt],
-  );
+  const activity = useMemo(() => {
+    const at = new Date(row.lead.lastInboundAt ?? row.lead.createdAt);
+    return {
+      at,
+      relative: formatDistanceToNow(at, { addSuffix: true }),
+      shortStamp: format(at, "d MMM · HH:mm"),
+      fullStamp: format(at, "PPpp"),
+    };
+  }, [row.lead.lastInboundAt, row.lead.createdAt]);
 
   async function patch(payload: Record<string, unknown>, msg: string) {
     setBusy(true);
@@ -317,10 +321,16 @@ function LeadRow({
       </td>
 
       <td
-        className="px-4 py-3 align-top text-xs text-(--color-muted-foreground)"
+        className="min-w-[9.5rem] px-4 py-3 align-top whitespace-nowrap"
+        title={activity.fullStamp}
         onClick={open}
       >
-        {lastActivity}
+        <span className="block text-xs font-medium text-(--color-foreground) tabular-nums">
+          {activity.relative}
+        </span>
+        <span className="block text-[11px] text-(--color-muted-foreground) tabular-nums">
+          {activity.shortStamp}
+        </span>
       </td>
 
       <td className="w-10 px-2 py-3 align-top text-right" onClick={open}>

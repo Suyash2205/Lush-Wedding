@@ -61,6 +61,9 @@ export async function listLeads(filter: LeadFilter = {}) {
 
   const where = conds.length ? and(...conds) : undefined;
 
+  /** Most recently active leads first — never sort by nullable lastInboundAt alone (PG puts NULLs first on DESC). */
+  const activityAt = sql`COALESCE(${leads.lastInboundAt}, ${leads.createdAt})`;
+
   const rows = await db
     .select({
       lead: leads,
@@ -79,7 +82,7 @@ export async function listLeads(filter: LeadFilter = {}) {
     .from(leads)
     .leftJoin(employees, eq(leads.assignedTo, employees.id))
     .where(where)
-    .orderBy(desc(leads.lastInboundAt), desc(leads.createdAt));
+    .orderBy(desc(activityAt));
 
   return rows;
 }

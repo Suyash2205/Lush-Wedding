@@ -41,10 +41,8 @@ export default async function LeadsPage({ searchParams }: PageProps) {
       stale: await isLeadStale(r.lead, thresholdHours),
     })),
   );
-  enriched.sort((a, b) => {
-    if (a.stale !== b.stale) return a.stale ? -1 : 1;
-    return 0;
-  });
+  // Preserve DB order: newest activity first (see listLeads). Stale badges are visual only —
+  // re-sorting stale-first made "last update" feel random vs recency.
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
