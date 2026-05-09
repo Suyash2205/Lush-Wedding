@@ -8,6 +8,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { STATUS_LABELS } from "@/lib/lead-constants";
 import type { LeadStatus } from "@/db/schema";
 
@@ -26,19 +28,56 @@ export function LeadFilters({
   current,
 }: {
   employees: { id: string; name: string }[];
-  current: { status: string; assignedTo: string; source: string };
+  current: {
+    status: string;
+    assignedTo: string;
+    source: string;
+    eventDateFrom: string;
+    eventDateTo: string;
+  };
 }) {
   const router = useRouter();
   const params = useSearchParams();
+
+  function push(next: URLSearchParams) {
+    const q = next.toString();
+    router.push(q ? `/leads?${q}` : "/leads");
+  }
 
   function update(key: "status" | "assignedTo" | "source", value: string) {
     const next = new URLSearchParams(params.toString());
     if (value === "all") next.delete(key);
     else next.set(key, value);
-    router.push(`/leads?${next.toString()}`);
+    push(next);
   }
 
+  function setEventDateFrom(value: string) {
+    const next = new URLSearchParams(params.toString());
+    if (value) next.set("eventDateFrom", value);
+    else next.delete("eventDateFrom");
+    push(next);
+  }
+
+  function setEventDateTo(value: string) {
+    const next = new URLSearchParams(params.toString());
+    if (value) next.set("eventDateTo", value);
+    else next.delete("eventDateTo");
+    push(next);
+  }
+
+  function clearEventDateRange() {
+    const next = new URLSearchParams(params.toString());
+    next.delete("eventDateFrom");
+    next.delete("eventDateTo");
+    push(next);
+  }
+
+  const hasEventRange = Boolean(
+    current.eventDateFrom || current.eventDateTo,
+  );
+
   return (
+    <div className="flex flex-col gap-3">
     <div className="flex flex-wrap items-center gap-2">
       <Select
         value={current.status}
@@ -93,6 +132,39 @@ export function LeadFilters({
           ))}
         </SelectContent>
       </Select>
+    </div>
+
+      <div className="flex flex-wrap items-center gap-2 border-t border-(--color-border) pt-3">
+        <span className="text-xs font-medium uppercase tracking-wide text-(--color-muted-foreground)">
+          Event date range
+        </span>
+        <Input
+          type="date"
+          aria-label="Event date from"
+          className="w-[150px]"
+          value={current.eventDateFrom}
+          onChange={(e) => setEventDateFrom(e.target.value)}
+        />
+        <span className="text-xs text-(--color-muted-foreground)">to</span>
+        <Input
+          type="date"
+          aria-label="Event date to"
+          className="w-[150px]"
+          value={current.eventDateTo}
+          onChange={(e) => setEventDateTo(e.target.value)}
+        />
+        {hasEventRange && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-9 text-(--color-muted-foreground)"
+            onClick={clearEventDateRange}
+          >
+            Clear dates
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

@@ -2,7 +2,14 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { format, formatDistanceToNow } from "date-fns";
+import {
+  addMonths,
+  format,
+  formatDistanceToNow,
+  parseISO,
+  startOfMonth,
+  subMonths,
+} from "date-fns";
 import {
   Bell,
   CalendarDays,
@@ -39,6 +46,38 @@ const STATUSES: LeadStatus[] = [
   "lost",
 ];
 
+const EVENT_NONE = "__none__";
+
+/** First-of-month values for ~5 years of month picks (wedding month). */
+const EVENT_MONTH_OPTIONS = (() => {
+  const anchor = startOfMonth(subMonths(new Date(), 12));
+  const out: { value: string; label: string }[] = [];
+  for (let i = 0; i < 60; i++) {
+    const d = addMonths(anchor, i);
+    out.push({
+      value: format(d, "yyyy-MM-dd"),
+      label: format(d, "MMM yyyy"),
+    });
+  }
+  return out;
+})();
+
+function monthSelectValue(
+  eventDate: string | Date | null | undefined,
+): string {
+  if (!eventDate) return EVENT_NONE;
+  try {
+    const d =
+      typeof eventDate === "string"
+        ? parseISO(eventDate.slice(0, 10))
+        : new Date(eventDate);
+    if (Number.isNaN(d.getTime())) return EVENT_NONE;
+    return format(startOfMonth(d), "yyyy-MM-dd");
+  } catch {
+    return EVENT_NONE;
+  }
+}
+
 const STATUS_DOT: Record<LeadStatus, string> = {
   new: "bg-(--color-primary)",
   awaiting_callback: "bg-(--color-warning)",
@@ -65,14 +104,22 @@ export function LeadsTable({
 }) {
   return (
     <div className="overflow-x-auto rounded-xl border border-(--color-border) bg-(--color-card)">
-      <table className="min-w-[1040px] w-full">
+      <table className="min-w-[1120px] w-full">
         <thead className="bg-(--color-muted) text-xs uppercase text-(--color-muted-foreground)">
           <tr>
+            <th
+              className="w-10 px-2 py-2 text-left tabular-nums"
+              title="Row number in this list"
+            >
+              #
+            </th>
             <th className="px-4 py-2 text-left">Lead</th>
             <th className="hidden px-4 py-2 text-left xl:table-cell">
               Initial requirement
             </th>
-            <th className="hidden px-4 py-2 text-left md:table-cell">Event</th>
+            <th className="hidden px-3 py-2 text-left md:table-cell">
+              Event date
+            </th>
             <th className="px-4 py-2 text-left">Status</th>
             <th className="hidden px-4 py-2 text-left lg:table-cell">
               Assigned
@@ -87,8 +134,13 @@ export function LeadsTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <LeadRow key={row.lead.id} row={row} employees={employees} />
+          {rows.map((row, index) => (
+            <LeadRow
+              key={row.lead.id}
+              serial={index + 1}
+              row={row}
+              employees={employees}
+            />
           ))}
         </tbody>
       </table>
@@ -97,9 +149,11 @@ export function LeadsTable({
 }
 
 function LeadRow({
+  serial,
   row,
   employees,
 }: {
+  serial: number;
   row: LeadRowData;
   employees: { id: string; name: string }[];
 }) {
@@ -152,6 +206,12 @@ function LeadRow({
       className="border-t border-(--color-border) transition-colors hover:bg-(--color-muted)/40"
       data-pending={pending || busy ? "1" : undefined}
     >
+      <td
+        className="px-2 py-3 align-top text-xs tabular-nums text-(--color-muted-foreground)"
+        onClick={open}
+      >
+        {serial}
+      </td>
       <td className="px-4 py-3 align-top">
         <button
           type="button"
@@ -203,23 +263,51 @@ function LeadRow({
       </td>
 
       <td
-        className="hidden px-4 py-3 align-top text-sm md:table-cell"
+        className="hidden max-w-[11rem] px-3 py-3 align-top text-sm md:table-cell"
         onClick={open}
       >
-        <div className="flex flex-col gap-0.5">
+        <div className="flex flex-col gap-1.5">
+          <div onClick={(e) => e.stopPropagation()}>
+            <Select
+              value={monthSelectValue(row.lead.eventDate)}
+              onValueChange={(v) => {
+                if (v === EVENT_NONE) {
+                  patch({ eventDate: null }, "Event date cleared");
+                } else {
+                  patch({ eventDate: v }, "Event month saved");
+                }
+              }}
+            >
+              <SelectTrigger
+                className="h-8 w-full min-w-0 py-0 text-xs"
+                aria-label="Wedding month"
+              >
+                <SelectValue placeholder="Month" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={EVENT_NONE}>No date</SelectItem>
+                {EVENT_MONTH_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           {row.lead.eventDate ? (
-            <span className="flex items-center gap-1.5">
-              <CalendarDays className="size-3 text-(--color-muted-foreground)" />
-              {format(new Date(row.lead.eventDate), "d MMM yyyy")}
+            <span className="flex items-center gap-1 text-[11px] text-(--color-muted-foreground)">
+              <CalendarDays className="size-3 shrink-0" />
+              {format(
+                typeof row.lead.eventDate === "string"
+                  ? parseISO(row.lead.eventDate.slice(0, 10))
+                  : new Date(row.lead.eventDate),
+                "d MMM yyyy",
+              )}
             </span>
-          ) : (
-            <span className="text-xs italic text-(--color-muted-foreground)">
-              No date yet
-            </span>
-          )}
+          ) : null}
           {row.lead.guestCount != null ? (
             <span className="flex items-center gap-1.5 text-xs text-(--color-muted-foreground)">
-              <Users className="size-3" />
+              <Users className="size-3 shrink-0" />
               {row.lead.guestCount} guests
             </span>
           ) : (

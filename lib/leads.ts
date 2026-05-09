@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq, gte, isNull, lt, lte, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, isNotNull, isNull, lt, lte, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   leads,
@@ -11,8 +11,6 @@ import {
   type Lead,
   type LeadStatus,
 } from "@/db/schema";
-
-void gte;
 
 export { STATUS_LABELS } from "./lead-constants";
 
@@ -41,6 +39,9 @@ export type LeadFilter = {
   status?: LeadStatus | "all";
   assignedTo?: string | "all";
   source?: "instagram" | "manual" | "all";
+  /** Inclusive `YYYY-MM-DD` — only leads with a non-null `event_date` in range */
+  eventDateFrom?: string;
+  eventDateTo?: string;
 };
 
 export async function listLeads(filter: LeadFilter = {}) {
@@ -57,6 +58,24 @@ export async function listLeads(filter: LeadFilter = {}) {
   }
   if (filter.source && filter.source !== "all") {
     conds.push(eq(leads.source, filter.source));
+  }
+
+  let from = filter.eventDateFrom?.trim();
+  let to = filter.eventDateTo?.trim();
+  if (from && to && from > to) {
+    const swap = from;
+    from = to;
+    to = swap;
+  }
+  if (from) {
+    conds.push(
+      and(isNotNull(leads.eventDate), gte(leads.eventDate, from)) as never,
+    );
+  }
+  if (to) {
+    conds.push(
+      and(isNotNull(leads.eventDate), lte(leads.eventDate, to)) as never,
+    );
   }
 
   const where = conds.length ? and(...conds) : undefined;

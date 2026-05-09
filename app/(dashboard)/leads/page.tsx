@@ -16,6 +16,8 @@ interface PageProps {
     status?: string;
     assignedTo?: string;
     source?: string;
+    eventDateFrom?: string;
+    eventDateTo?: string;
   }>;
 }
 
@@ -26,6 +28,8 @@ export default async function LeadsPage({ searchParams }: PageProps) {
     status: (params.status ?? "all") as LeadStatus | "all",
     assignedTo: params.assignedTo ?? "all",
     source: (params.source ?? "all") as "instagram" | "manual" | "all",
+    eventDateFrom: params.eventDateFrom?.trim() || undefined,
+    eventDateTo: params.eventDateTo?.trim() || undefined,
   };
 
   const [rows, employeeList, thresholdHours, stats] = await Promise.all([
@@ -68,7 +72,13 @@ export default async function LeadsPage({ searchParams }: PageProps) {
 
       <LeadFilters
         employees={employeeList.map((e) => ({ id: e.id, name: e.name }))}
-        current={filter}
+        current={{
+          status: filter.status,
+          assignedTo: filter.assignedTo,
+          source: filter.source,
+          eventDateFrom: filter.eventDateFrom ?? "",
+          eventDateTo: filter.eventDateTo ?? "",
+        }}
       />
 
       {enriched.length === 0 ? (
