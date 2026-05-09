@@ -102,17 +102,17 @@ sufficient for a single business operating on its own IG account.
 3. Open **Instagram -> API Setup** in the left sidebar. Connect your IG Business
    account. Generate a **long-lived Page access token**.
 
-4. Paste that token into **`META_PAGE_ACCESS_TOKEN`** in your deployment (Vercel
-   env vars, then redeploy). The webhook uses it to call Meta's Graph API and
-   fetch each DM sender's public **@username** — webhooks almost never include
-   `sender.username` by default. The token must be a **Page** token with
-   `instagram_basic`, `instagram_manage_messages`, `pages_manage_metadata`,
-   `pages_read_engagement`, and `pages_show_list` (see Meta [User Profile API](https://developers.facebook.com/docs/messenger-platform/instagram/features/user-profile/)).
-   Without a valid token, leads show as `Instagram · 1234…5678` instead of `@handle`.
+4. Add a token for **@username** lookup (webhooks omit `sender.username`):
+   - **Instagram API** (Welcome → Generate tokens): set **`META_INSTAGRAM_USER_ACCESS_TOKEN`**
+     on Vercel — we call `graph.instagram.com` first ([Instagram Login User Profile](https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/messaging-api/user-profile)).
+   - **Or** a Facebook **Page** token: **`META_PAGE_ACCESS_TOKEN`** ([Messenger User Profile](https://developers.facebook.com/docs/messenger-platform/instagram/features/user-profile/)).
+   If you only set `META_PAGE_ACCESS_TOKEN` with the Step‑2 Instagram token, we still
+   try `graph.instagram.com` before `graph.facebook.com`. Redeploy after saving.
 
-   After fixing the token, open **Settings → Integration** in this app and click
-   **Refresh handles for existing leads** to backfill usernames for rows already in
-   the database.
+   If handles stay as `Instagram · 1234…5678`, try **`META_INSTAGRAM_GRAPH_API_VERSION=v25.0`**
+   in Vercel, redeploy, then **Settings → Integration → Refresh handles**.
+
+   After fixing the token, use **Refresh handles for existing leads** to backfill.
 
 5. Copy your **App Secret** (App settings -> Basic -> App Secret). Set it as
    **`META_APP_SECRET`** in your deployment's environment variables.

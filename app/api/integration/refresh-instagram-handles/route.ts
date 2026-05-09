@@ -21,14 +21,16 @@ export async function POST() {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const token =
-    process.env.META_PAGE_ACCESS_TOKEN ??
-    process.env.INSTAGRAM_PAGE_ACCESS_TOKEN;
-  if (!token) {
+  const hasToken =
+    Boolean(process.env.META_INSTAGRAM_USER_ACCESS_TOKEN?.trim()) ||
+    Boolean(process.env.META_PAGE_ACCESS_TOKEN?.trim()) ||
+    Boolean(process.env.INSTAGRAM_PAGE_ACCESS_TOKEN?.trim());
+
+  if (!hasToken) {
     return NextResponse.json(
       {
         error:
-          "META_PAGE_ACCESS_TOKEN is not set. Add it on Vercel, redeploy, then try again.",
+          "Set META_INSTAGRAM_USER_ACCESS_TOKEN (recommended) or META_PAGE_ACCESS_TOKEN on Vercel, redeploy, then try again.",
       },
       { status: 400 },
     );

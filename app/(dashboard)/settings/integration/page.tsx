@@ -21,7 +21,8 @@ export default async function IntegrationSettingsPage() {
   const hasAppSecret = Boolean(process.env.META_APP_SECRET);
   const hasPageToken = Boolean(
     process.env.META_PAGE_ACCESS_TOKEN ||
-      process.env.INSTAGRAM_PAGE_ACCESS_TOKEN,
+      process.env.INSTAGRAM_PAGE_ACCESS_TOKEN ||
+      process.env.META_INSTAGRAM_USER_ACCESS_TOKEN,
   );
 
   return (
@@ -75,53 +76,79 @@ export default async function IntegrationSettingsPage() {
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           <p>
-            Paste the same <b>long-lived Page access token</b> from your Meta app&apos;s{" "}
-            <b>Instagram → API Setup</b> page into{" "}
-            <code className="rounded bg-(--color-muted) px-1 py-0.5 text-xs">
-              META_PAGE_ACCESS_TOKEN
-            </code>{" "}
-            on Vercel (and redeploy). It must be a <b>Page</b> token (not a personal
-            user token), generated for the Facebook Page that is linked to your
-            Instagram professional account / DM inbox.
+            If leads show like <span className="font-mono">Instagram 2727…9523</span>, the
+            webhook is working — we&apos;re missing a profile lookup. Meta exposes two
+            setups; tokens are&nbsp;<b>different</b>.
           </p>
-          <div className="rounded-md border border-(--color-border) bg-(--color-muted)/40 p-3 text-xs leading-relaxed text-(--color-muted-foreground)">
-            Meta requires these permissions on that token (
-            <a
-              href="https://developers.facebook.com/docs/messenger-platform/instagram/features/user-profile/"
-              target="_blank"
-              rel="noreferrer"
-              className="text-(--color-primary) hover:underline"
-            >
-              User Profile API
-            </a>
-            ):{" "}
-            <span className="font-mono text-[11px]">
-              instagram_basic, instagram_manage_messages, pages_manage_metadata,
-              pages_read_engagement, pages_show_list
-            </span>
-            . Generate the token while logged in as someone who has{" "}
-            <b>Moderate</b> access on your Facebook Page.
-          </div>
+          <ol className="list-decimal space-y-2 pl-5 text-sm leading-relaxed">
+            <li>
+              <b>Instagram API product</b> (Welcome → Generate access tokens): put that
+              token in{" "}
+              <code className="rounded bg-(--color-muted) px-1 py-0.5 font-mono text-[11px]">
+                META_INSTAGRAM_USER_ACCESS_TOKEN
+              </code>{" "}
+              — we hit{" "}
+              <code className="font-mono text-[11px]">graph.instagram.com</code> first (
+              <a
+                href="https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/messaging-api/user-profile"
+                target="_blank"
+                rel="noreferrer"
+                className="text-(--color-primary) hover:underline"
+              >
+                Instagram Login User Profile API
+              </a>
+              ). Permissions:{" "}
+              <code className="font-mono text-[11px]">
+                instagram_business_basic, instagram_business_manage_messages
+              </code>
+              .
+            </li>
+            <li>
+              <b>Classic Page workflow</b>: long-lived Page token in{" "}
+              <code className="rounded bg-(--color-muted) px-1 py-0.5 font-mono text-[11px]">
+                META_PAGE_ACCESS_TOKEN
+              </code>{" "}
+              →{" "}
+              <code className="font-mono text-[11px]">graph.facebook.com</code> (
+              <a
+                href="https://developers.facebook.com/docs/messenger-platform/instagram/features/user-profile/"
+                target="_blank"
+                rel="noreferrer"
+                className="text-(--color-primary) hover:underline"
+              >
+                Messenger Platform User Profile
+              </a>
+              ).
+            </li>
+          </ol>
+          <p className="text-xs text-(--color-muted-foreground)">
+            If your Step‑2 token is only in{" "}
+            <code className="font-mono">META_PAGE_ACCESS_TOKEN</code>, we still probe{" "}
+            <code className="font-mono">graph.instagram.com</code> before Facebook — usually
+            no change needed. If lookups still fail, add{" "}
+            <code className="font-mono">META_INSTAGRAM_GRAPH_API_VERSION=v25.0</code> in
+            Vercel and redeploy.
+          </p>
           <div className="flex flex-wrap items-center gap-2">
             <RefreshInstagramHandlesButton />
             <span className="text-xs text-(--color-muted-foreground)">
-              Use after fixing the env var — backfills @handles on existing leads (
-              max {40}/click).
+              Backfills @handles on rows that only have IDs (max 40/run). Check{" "}
+              <b>Vercel → Logs</b> filter <code className="font-mono text-[11px]">ig-profile</code>{" "}
+              for Meta error codes after a redeploy + refresh.
             </span>
           </div>
           <p className="text-xs text-(--color-muted-foreground)">
             Env status:{" "}
             {hasPageToken ? (
               <span className="font-medium text-(--color-foreground)">
-                META_PAGE_ACCESS_TOKEN is present. If lists still show
-                &ldquo;Instagram 1234…5678&rdquo;, the token is missing permissions or isn&apos;t
-                Page-scoped — check App Dashboard → <b>Use cases → Permissions</b>, then tap
-                <b> Refresh handles</b> above.
+                A token env var is set ({" "}
+                <code className="font-mono text-[11px]">META_INSTAGRAM_USER_ACCESS_TOKEN</code>{" "}
+                / <code className="font-mono text-[11px]">META_PAGE_ACCESS_TOKEN</code>). If handles
+                are still numeric, inspect logs above or add the IG-specific env name.
               </span>
             ) : (
               <span className="font-medium text-(--color-warning)">
-                not set — leads will show as &ldquo;Instagram 1234&hellip;5678&rdquo;
-                until you add the token or fill the handle after a phone call.
+                not set — leads will stay as truncated Instagram IDs until you add tokens.
               </span>
             )}
           </p>
@@ -160,12 +187,12 @@ export default async function IntegrationSettingsPage() {
               IG account.
             </Step>
             <Step n={4}>
-              On the same API Setup page, generate a <b>long-lived Page access token</b>{" "}
-              and add it as <code>META_PAGE_ACCESS_TOKEN</code> on Vercel (then
-              redeploy). Our webhook uses this to fetch each DM sender&apos;s public{" "}
-              <b>@username</b> via the Graph API, because webhook JSON usually omits
-              it. Also copy your <b>App Secret</b> into{" "}
-              <code>META_APP_SECRET</code>.
+              On <b>Instagram → Welcome to the Instagram API → Step 2: Generate access
+              tokens</b>, create the Instagram access token for your IG account.
+              Prefer adding it as <code>META_INSTAGRAM_USER_ACCESS_TOKEN</code> on
+              Vercel (Instagram Login flow); or keep using{" "}
+              <code>META_PAGE_ACCESS_TOKEN</code> — we probe both hosts. Copy your{" "}
+              <b>App Secret</b> into <code>META_APP_SECRET</code>.
             </Step>
             <Step n={5}>
               Open <b>Webhooks</b> in the app. Pick the <b>Instagram</b> object.
