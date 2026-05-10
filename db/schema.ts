@@ -22,6 +22,8 @@ export const messageSourceEnum = pgEnum("message_source", [
 export const leadStatusEnum = pgEnum("lead_status", [
   "new",
   "awaiting_callback",
+  "tentative",
+  "very_positive",
   "contacted",
   "won",
   "lost",

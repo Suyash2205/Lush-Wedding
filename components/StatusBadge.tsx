@@ -5,6 +5,8 @@ import type { LeadStatus } from "@/db/schema";
 const variants: Record<LeadStatus, React.ComponentProps<typeof Badge>["variant"]> = {
   new: "primary",
   awaiting_callback: "warning",
+  tentative: "outline",
+  very_positive: "success",
   contacted: "outline",
   won: "success",
   lost: "destructive",

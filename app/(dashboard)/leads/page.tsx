@@ -6,6 +6,7 @@ import {
   isLeadStale,
 } from "@/lib/leads";
 import type { LeadStatus } from "@/db/schema";
+import { LEAD_STATUSES } from "@/lib/lead-constants";
 import { AddLeadDialog } from "@/components/AddLeadDialog";
 import { LeadFilters } from "@/components/LeadFilters";
 import { LeadsTable, type LeadRowData } from "@/components/LeadsTable";
@@ -17,6 +18,7 @@ interface PageProps {
     assignedTo?: string;
     source?: string;
     phone?: string;
+    content?: string;
     eventDateFrom?: string;
     eventDateTo?: string;
   }>;
@@ -28,12 +30,25 @@ export default async function LeadsPage({ searchParams }: PageProps) {
   const phoneParam = params.phone?.trim();
   const hasPhone: "all" | "yes" | "no" =
     phoneParam === "yes" || phoneParam === "no" ? phoneParam : "all";
+  const contentParam = params.content?.trim();
+  const hasContent: "all" | "yes" | "no" =
+    contentParam === "yes" || contentParam === "no" ? contentParam : "all";
+  const requestedStatuses = (params.status ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s): s is LeadStatus =>
+      LEAD_STATUSES.includes(s as LeadStatus),
+    );
 
   const filter = {
-    status: (params.status ?? "all") as LeadStatus | "all",
+    statuses:
+      requestedStatuses.length > 0 && requestedStatuses.length < LEAD_STATUSES.length
+        ? requestedStatuses
+        : undefined,
     assignedTo: params.assignedTo ?? "all",
     source: (params.source ?? "all") as "instagram" | "manual" | "all",
     hasPhone,
+    hasContent,
     eventDateFrom: params.eventDateFrom?.trim() || undefined,
     eventDateTo: params.eventDateTo?.trim() || undefined,
   };
@@ -79,10 +94,11 @@ export default async function LeadsPage({ searchParams }: PageProps) {
       <LeadFilters
         employees={employeeList.map((e) => ({ id: e.id, name: e.name }))}
         current={{
-          status: filter.status,
+          statuses: filter.statuses ?? [],
           assignedTo: filter.assignedTo,
           source: filter.source,
           phone: filter.hasPhone,
+          content: filter.hasContent,
           eventDateFrom: filter.eventDateFrom ?? "",
           eventDateTo: filter.eventDateTo ?? "",
         }}

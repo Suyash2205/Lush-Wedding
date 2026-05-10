@@ -10,17 +10,9 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { STATUS_LABELS } from "@/lib/lead-constants";
+import { LEAD_STATUSES, STATUS_LABELS } from "@/lib/lead-constants";
 import type { LeadStatus } from "@/db/schema";
 
-const STATUSES: (LeadStatus | "all")[] = [
-  "all",
-  "new",
-  "awaiting_callback",
-  "contacted",
-  "won",
-  "lost",
-];
 const SOURCES: ("all" | "instagram" | "manual")[] = ["all", "instagram", "manual"];
 
 export function LeadFilters({
@@ -29,10 +21,11 @@ export function LeadFilters({
 }: {
   employees: { id: string; name: string }[];
   current: {
-    status: string;
+    statuses: LeadStatus[];
     assignedTo: string;
     source: string;
     phone: string;
+    content: string;
     eventDateFrom: string;
     eventDateTo: string;
   };
@@ -45,13 +38,31 @@ export function LeadFilters({
     router.push(q ? `/leads?${q}` : "/leads");
   }
 
-  function update(
-    key: "status" | "assignedTo" | "source" | "phone",
-    value: string,
-  ) {
+  function update(key: "assignedTo" | "source" | "phone" | "content", value: string) {
     const next = new URLSearchParams(params.toString());
     if (value === "all") next.delete(key);
     else next.set(key, value);
+    push(next);
+  }
+
+  function toggleStatus(status: LeadStatus) {
+    const next = new URLSearchParams(params.toString());
+    const currentRaw = next.get("status") ?? "";
+    const set = new Set(
+      currentRaw
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+    );
+    if (set.has(status)) set.delete(status);
+    else set.add(status);
+
+    const values = LEAD_STATUSES.filter((s) => set.has(s));
+    if (values.length === 0 || values.length === LEAD_STATUSES.length) {
+      next.delete("status");
+    } else {
+      next.set("status", values.join(","));
+    }
     push(next);
   }
 
@@ -82,22 +93,48 @@ export function LeadFilters({
 
   return (
     <div className="flex flex-col gap-3">
-    <div className="flex flex-wrap items-center gap-2">
-      <Select
-        value={current.status}
-        onValueChange={(v) => update("status", v)}
-      >
-        <SelectTrigger className="w-[160px]">
-          <SelectValue placeholder="Status" />
-        </SelectTrigger>
-        <SelectContent>
-          {STATUSES.map((s) => (
-            <SelectItem key={s} value={s}>
-              {s === "all" ? "All statuses" : STATUS_LABELS[s as LeadStatus]}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <div className="rounded-lg border border-(--color-border) p-2">
+        <div className="mb-2 text-xs font-medium uppercase tracking-wide text-(--color-muted-foreground)">
+          Status (multi-select)
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {LEAD_STATUSES.map((s) => {
+            const selected = current.statuses.includes(s);
+            return (
+              <button
+                key={s}
+                type="button"
+                onClick={() => toggleStatus(s)}
+                className={`rounded-md border px-2 py-1 text-xs transition-colors ${
+                  selected
+                    ? "border-(--color-primary) bg-(--color-primary)/10 text-(--color-foreground)"
+                    : "border-(--color-border) text-(--color-muted-foreground) hover:bg-(--color-muted)"
+                }`}
+                aria-pressed={selected}
+              >
+                {STATUS_LABELS[s]}
+              </button>
+            );
+          })}
+          {current.statuses.length > 0 && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs text-(--color-muted-foreground)"
+              onClick={() => {
+                const next = new URLSearchParams(params.toString());
+                next.delete("status");
+                push(next);
+              }}
+            >
+              Clear
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
 
       <Select
         value={current.assignedTo}
@@ -150,7 +187,21 @@ export function LeadFilters({
           <SelectItem value="no">No phone</SelectItem>
         </SelectContent>
       </Select>
-    </div>
+
+      <Select
+        value={current.content}
+        onValueChange={(v) => update("content", v)}
+      >
+        <SelectTrigger className="w-[170px]">
+          <SelectValue placeholder="Content" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All content</SelectItem>
+          <SelectItem value="yes">Has content</SelectItem>
+          <SelectItem value="no">No content</SelectItem>
+        </SelectContent>
+      </Select>
+      </div>
 
       <div className="flex flex-wrap items-center gap-2 border-t border-(--color-border) pt-3">
         <span className="text-xs font-medium uppercase tracking-wide text-(--color-muted-foreground)">

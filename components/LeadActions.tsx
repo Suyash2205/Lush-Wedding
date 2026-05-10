@@ -14,16 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { STATUS_LABELS } from "@/lib/lead-constants";
+import { LEAD_STATUSES, STATUS_LABELS } from "@/lib/lead-constants";
 import type { LeadStatus } from "@/db/schema";
-
-const STATUSES: LeadStatus[] = [
-  "new",
-  "awaiting_callback",
-  "contacted",
-  "won",
-  "lost",
-];
 
 type Props = {
   lead: {
@@ -163,7 +155,7 @@ export function LeadActions({ lead, employees }: Props) {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {STATUSES.map((s) => (
+            {LEAD_STATUSES.map((s) => (
               <SelectItem key={s} value={s}>
                 {STATUS_LABELS[s]}
               </SelectItem>

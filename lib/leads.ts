@@ -4,6 +4,7 @@ import {
   desc,
   eq,
   gte,
+  inArray,
   isNotNull,
   isNull,
   lt,
@@ -47,7 +48,7 @@ export async function getOwnerNotificationEmail(): Promise<string> {
 }
 
 export type LeadFilter = {
-  status?: LeadStatus | "all";
+  statuses?: LeadStatus[];
   assignedTo?: string | "all";
   source?: "instagram" | "manual" | "all";
   /** Inclusive `YYYY-MM-DD` — only leads with a non-null `event_date` in range */
@@ -55,12 +56,14 @@ export type LeadFilter = {
   eventDateTo?: string;
   /** URL param `phone`: `yes` = has non-empty phone, `no` = missing/blank */
   hasPhone?: "all" | "yes" | "no";
+  /** URL param `content`: `yes` => summary/message exists, `no` => none */
+  hasContent?: "all" | "yes" | "no";
 };
 
 export async function listLeads(filter: LeadFilter = {}) {
   const conds = [] as ReturnType<typeof eq>[];
-  if (filter.status && filter.status !== "all") {
-    conds.push(eq(leads.status, filter.status));
+  if (filter.statuses && filter.statuses.length > 0) {
+    conds.push(inArray(leads.status, filter.statuses) as never);
   }
   if (filter.assignedTo && filter.assignedTo !== "all") {
     if (filter.assignedTo === "unassigned") {
@@ -98,6 +101,30 @@ export async function listLeads(filter: LeadFilter = {}) {
   if (filter.hasPhone === "no") {
     conds.push(
       sql`trim(coalesce(${leads.customerPhone}, '')) = ''` as never,
+    );
+  }
+  if (filter.hasContent === "yes") {
+    conds.push(
+      sql`(
+        trim(coalesce(${leads.summary}, '')) <> ''
+        OR EXISTS (
+          SELECT 1 FROM ${messages}
+          WHERE ${messages.leadId} = ${leads.id}
+            AND trim(coalesce(${messages.content}, '')) <> ''
+        )
+      )` as never,
+    );
+  }
+  if (filter.hasContent === "no") {
+    conds.push(
+      sql`(
+        trim(coalesce(${leads.summary}, '')) = ''
+        AND NOT EXISTS (
+          SELECT 1 FROM ${messages}
+          WHERE ${messages.leadId} = ${leads.id}
+            AND trim(coalesce(${messages.content}, '')) <> ''
+        )
+      )` as never,
     );
   }
 

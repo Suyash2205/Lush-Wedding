@@ -32,18 +32,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { STATUS_LABELS } from "@/lib/lead-constants";
+import { LEAD_STATUSES, STATUS_LABELS } from "@/lib/lead-constants";
 import { formatPhone } from "@/lib/utils";
 import { toast } from "sonner";
 import type { Lead, LeadStatus, Employee } from "@/db/schema";
-
-const STATUSES: LeadStatus[] = [
-  "new",
-  "awaiting_callback",
-  "contacted",
-  "won",
-  "lost",
-];
 
 const EVENT_NONE = "__none__";
 
@@ -89,6 +81,8 @@ function clipSnippet(s: string | null | undefined, max = 86): string {
 const STATUS_DOT: Record<LeadStatus, string> = {
   new: "bg-(--color-primary)",
   awaiting_callback: "bg-(--color-warning)",
+  tentative: "bg-sky-500",
+  very_positive: "bg-emerald-500",
   contacted: "bg-zinc-400",
   won: "bg-(--color-success)",
   lost: "bg-(--color-destructive)",
@@ -401,7 +395,7 @@ function LeadMobileCard({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {STATUSES.map((s) => (
+              {LEAD_STATUSES.map((s) => (
                 <SelectItem key={s} value={s}>
                   <span className="flex items-center gap-2">
                     <span className={`size-2 rounded-full ${STATUS_DOT[s]}`} />
@@ -577,7 +571,7 @@ function LeadRow({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {STATUSES.map((s) => (
+            {LEAD_STATUSES.map((s) => (
               <SelectItem key={s} value={s}>
                 <span className="flex items-center gap-2">
                   <span className={`size-2 rounded-full ${STATUS_DOT[s]}`} />
